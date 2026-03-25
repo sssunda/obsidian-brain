@@ -1,0 +1,10 @@
+{"type": "progress", "data": {"type": "hook_progress"}, "parentUuid": null, "isSidechain": false}
+{"type": "system", "message": {"content": "system prompt"}, "parentUuid": null, "isSidechain": false}
+{"type": "file-history-snapshot", "messageId": "snap1", "snapshot": {}}
+{"type": "user", "uuid": "u1", "parentUuid": null, "isSidechain": false, "message": {"role": "user", "content": "Docker 네트워킹에 대해 알려줘"}}
+{"type": "assistant", "uuid": "a1", "parentUuid": "u1", "isSidechain": false, "message": {"role": "assistant", "content": [{"type": "thinking", "thinking": "Let me explain Docker networking..."}, {"type": "text", "text": "Docker 네트워킹은 컨테이너 간 통신을 관리합니다."}, {"type": "tool_use", "id": "tu1", "name": "Bash", "input": {"command": "docker network ls"}}]}}
+{"type": "progress", "data": {"type": "tool_progress"}, "parentUuid": "a1", "isSidechain": false}
+{"type": "user", "uuid": "u2", "parentUuid": "a1", "isSidechain": false, "message": {"role": "user", "content": "bridge 네트워크랑 host 네트워크 차이가 뭐야?"}}
+{"type": "assistant", "uuid": "a2", "parentUuid": "u2", "isSidechain": false, "message": {"role": "assistant", "content": [{"type": "text", "text": "Bridge는 격리된 네트워크, Host는 호스트 네트워크를 공유합니다."}]}}
+{"type": "user", "uuid": "u3", "parentUuid": "a2", "isSidechain": false, "message": {"role": "user", "content": "고마워"}}
+{"type": "assistant", "uuid": "a3", "parentUuid": "u3", "isSidechain": false, "message": {"role": "assistant", "content": [{"type": "text", "text": "도움이 되었다니 기쁘네요!"}]}}
