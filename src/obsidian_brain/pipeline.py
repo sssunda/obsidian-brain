@@ -3,7 +3,7 @@ from pathlib import Path
 
 from .analyzer import analyze
 from .config import load_config
-from .filter import should_process
+from .filter import is_similar_conversation, should_process
 from .generator import (
     generate_concept_doc,
     generate_conversation_doc,
@@ -12,7 +12,7 @@ from .generator import (
     update_project_doc,
 )
 from .parser import parse_transcript
-from .vault import load_processed_ids, save_processed_id, scan_concepts, scan_projects
+from .vault import load_processed_ids, save_processed_id, scan_concepts, scan_existing_insights, scan_projects
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ def process_session(
     # Analyze
     concepts = scan_concepts(vault_path, config["folders"]["concepts"])
     projects = scan_projects(vault_path, config["folders"]["projects"])
+    existing_insights = scan_existing_insights(vault_path, config["folders"]["concepts"])
     logger.info(f"Vault context: {len(concepts)} concepts, {len(projects)} projects")
 
     analysis = analyze(
@@ -46,8 +47,21 @@ def process_session(
         concepts=concepts,
         projects=projects,
         max_retries=config.get("max_retries", max_retries),
+        existing_insights=existing_insights,
+        model=config.get("model", "sonnet"),
     )
     logger.info(f"Analysis complete: {analysis['title_slug']}")
+
+    # Skip if very similar conversation already exists for same date
+    if is_similar_conversation(
+        summary=analysis["summary"],
+        vault_path=vault_path,
+        conv_folder=config["folders"]["conversations"],
+        date=parsed["date"],
+    ):
+        logger.info(f"Similar conversation already exists, skipping {parsed['session_id']}")
+        save_processed_id(vault_path, parsed["session_id"])
+        return None
 
     # Generate conversation doc
     conv_path = generate_conversation_doc(

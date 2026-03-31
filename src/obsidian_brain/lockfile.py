@@ -1,10 +1,11 @@
 import fcntl
 import time
+from io import TextIOWrapper
 from pathlib import Path
 
 
-def acquire_lock(lock_path: Path, timeout: int = 30) -> int | None:
-    """Acquire file lock. Returns fd on success, None on timeout."""
+def acquire_lock(lock_path: Path, timeout: int = 30) -> TextIOWrapper | None:
+    """Acquire file lock. Returns file object on success, None on timeout."""
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     fd = open(lock_path, "w")
     deadline = time.monotonic() + timeout

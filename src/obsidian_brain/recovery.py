@@ -9,6 +9,7 @@ def find_unprocessed_sessions(
     projects_subdir: Path,
     processed_ids: set[str],
     max_age_days: int = 30,
+    batch_limit: int = 10,
 ) -> list[Path]:
     if not projects_subdir.exists():
         return []
@@ -27,4 +28,4 @@ def find_unprocessed_sessions(
         unprocessed.append(f)
 
     unprocessed.sort(key=lambda f: f.stat().st_mtime)
-    return unprocessed
+    return unprocessed[:batch_limit]

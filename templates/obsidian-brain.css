@@ -1,0 +1,18 @@
+/* Obsidian Brain - Document type styling via cssclasses */
+/* Compatible with both light and dark themes */
+
+/* Conversation docs: blue accent */
+.ob-conversation .inline-title { color: var(--color-blue); }
+.ob-conversation .markdown-preview-sizer { border-left: 3px solid var(--color-blue); padding-left: 12px; }
+
+/* Concept docs: green accent */
+.ob-concept .inline-title { color: var(--color-green); }
+.ob-concept .markdown-preview-sizer { border-left: 3px solid var(--color-green); padding-left: 12px; }
+
+/* Project docs: amber accent */
+.ob-project .inline-title { color: var(--color-orange); }
+.ob-project .markdown-preview-sizer { border-left: 3px solid var(--color-orange); padding-left: 12px; }
+
+/* Digest docs: purple accent */
+.ob-digest .inline-title { color: var(--color-purple); }
+.ob-digest .markdown-preview-sizer { border-left: 3px solid var(--color-purple); padding-left: 12px; }

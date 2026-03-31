@@ -1,5 +1,7 @@
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
+
 import frontmatter
 
 
@@ -32,6 +34,36 @@ def save_processed_id(vault_path: Path, session_id: str) -> None:
     processed_file.parent.mkdir(parents=True, exist_ok=True)
     with open(processed_file, "a") as f:
         f.write(f"{session_id}\t{datetime.now().isoformat()}\n")
+
+
+def scan_existing_insights(vault_path: Path, folder: str = "Concepts") -> dict[str, list[str]]:
+    """Read existing insights from concept docs, keyed by concept name."""
+    concepts_dir = vault_path / folder
+    if not concepts_dir.exists():
+        return {}
+
+    insights: dict[str, list[str]] = {}
+    for f in concepts_dir.glob("*.md"):
+        try:
+            post = frontmatter.load(f)
+            concept_name = f.stem
+            concept_insights = []
+            in_section = False
+            for line in post.content.split("\n"):
+                if line.strip() == "## 인사이트":
+                    in_section = True
+                    continue
+                if in_section and line.startswith("## "):
+                    break
+                if in_section and line.strip().startswith("- ("):
+                    match = re.match(r"^- \(\d{4}-\d{2}-\d{2}\) (.+)$", line.strip())
+                    if match:
+                        concept_insights.append(match.group(1))
+            if concept_insights:
+                insights[concept_name] = concept_insights
+        except Exception:
+            continue
+    return insights
 
 
 def rotate_processed(vault_path: Path, retention_days: int = 30) -> None:

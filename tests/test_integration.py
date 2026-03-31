@@ -10,7 +10,7 @@ from obsidian_brain.pipeline import process_session
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-def _mock_analyze(parsed, concepts, projects, max_retries=3):
+def _mock_analyze(parsed, concepts, projects, max_retries=3, existing_insights=None, model="sonnet"):
     """Return a realistic analysis result without calling claude -p."""
     return {
         "summary": "Docker 네트워킹의 bridge와 host 차이를 배웠다",

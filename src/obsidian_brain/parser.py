@@ -31,7 +31,7 @@ def parse_transcript(transcript_path: Path) -> dict:
                     messages.append({"role": "assistant", "content": combined})
 
     mtime = transcript_path.stat().st_mtime
-    date_str = datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%Y-%m-%d")
+    date_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
 
     return {
         "session_id": session_id,

@@ -6,10 +6,19 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+SETTINGS_FILE="$HOME/.claude/settings.json"
 
 echo "Obsidian Brain Hook Installer"
 echo "=============================="
 echo ""
+
+# Check jq is installed
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq가 필요합니다. 설치해주세요:"
+    echo "  brew install jq    (macOS)"
+    echo "  apt install jq     (Ubuntu/Debian)"
+    exit 1
+fi
 
 # Ask for vault path
 read -p "Obsidian Vault 경로를 입력하세요 (예: ~/ObsidianVault): " VAULT_PATH
@@ -37,34 +46,83 @@ folders:
   concepts: Concepts
   projects: Projects
 EOF
-    echo "Created config: $VAULT_PATH/.obsidian-brain/config.yaml"
+    echo "✓ Config 생성: $VAULT_PATH/.obsidian-brain/config.yaml"
 fi
 
 # Create vault directories
 mkdir -p "$VAULT_PATH/Conversations"
 mkdir -p "$VAULT_PATH/Concepts"
 mkdir -p "$VAULT_PATH/Projects"
+echo "✓ Vault 폴더 생성 완료"
 
-echo ""
-echo "설치 완료!"
-echo ""
-echo "Claude Code hooks를 설정하려면 ~/.claude/settings.json에 아래를 추가하세요:"
-echo ""
-cat << EOF
+# Install CSS snippet
+SNIPPETS_DIR="$VAULT_PATH/.obsidian/snippets"
+mkdir -p "$SNIPPETS_DIR"
+if [ -f "$PROJECT_DIR/templates/obsidian-brain.css" ]; then
+    cp "$PROJECT_DIR/templates/obsidian-brain.css" "$SNIPPETS_DIR/"
+    echo "✓ CSS snippet 설치: $SNIPPETS_DIR/obsidian-brain.css"
+fi
+
+# Install dashboard template
+if [ -f "$PROJECT_DIR/templates/dashboard.md" ] && [ ! -f "$VAULT_PATH/Brain Dashboard.md" ]; then
+    cp "$PROJECT_DIR/templates/dashboard.md" "$VAULT_PATH/Brain Dashboard.md"
+    echo "✓ Dashboard 생성: $VAULT_PATH/Brain Dashboard.md"
+fi
+
+# Build hooks JSON
+HOOKS_JSON=$(cat << ENDJSON
 {
-  "hooks": {
-    "SessionEnd": [
-      {
-        "command": "uv run --project $PROJECT_DIR python -m obsidian_brain process --session-id \$SESSION_ID --cwd \$CWD --vault-path $VAULT_PATH &",
-        "timeout": 5000
-      }
-    ],
-    "SessionStart": [
-      {
-        "command": "uv run --project $PROJECT_DIR python -m obsidian_brain recover --vault-path $VAULT_PATH &",
-        "timeout": 5000
-      }
-    ]
-  }
+  "SessionEnd": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "uv run --project $PROJECT_DIR python -m obsidian_brain process --session-id \$SESSION_ID --cwd \"\$CWD\" --vault-path \"$VAULT_PATH\"",
+          "timeout": 120,
+          "async": true
+        }
+      ]
+    }
+  ],
+  "SessionStart": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "uv run --project $PROJECT_DIR python -m obsidian_brain recover --vault-path \"$VAULT_PATH\"",
+          "timeout": 120,
+          "async": true
+        }
+      ]
+    }
+  ]
 }
-EOF
+ENDJSON
+)
+
+# Create settings.json if it doesn't exist
+mkdir -p "$(dirname "$SETTINGS_FILE")"
+if [ ! -f "$SETTINGS_FILE" ]; then
+    echo '{}' > "$SETTINGS_FILE"
+    echo "✓ settings.json 생성: $SETTINGS_FILE"
+fi
+
+# Check if hooks already exist
+EXISTING_HOOKS=$(jq -r '.hooks // empty' "$SETTINGS_FILE")
+if [ -n "$EXISTING_HOOKS" ] && [ "$EXISTING_HOOKS" != "{}" ]; then
+    BACKUP_FILE="${SETTINGS_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+    cp "$SETTINGS_FILE" "$BACKUP_FILE"
+    echo "⚠ 기존 hooks 발견 → 백업: $BACKUP_FILE"
+fi
+
+# Merge hooks into settings.json
+jq --argjson hooks "$HOOKS_JSON" '.hooks = $hooks' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
+    && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+
+echo "✓ hooks 설정 완료: $SETTINGS_FILE"
+echo ""
+echo "설치 완료! 다음 Claude Code 세션부터 자동으로 작동합니다."
+echo ""
+echo "에러 확인:"
+echo "  cat \"$VAULT_PATH/.obsidian-brain/logs/\$(date +%Y-%m-%d).log\""
+echo "  cat \"$VAULT_PATH/.obsidian-brain/.failed\""
