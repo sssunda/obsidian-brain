@@ -34,6 +34,37 @@ def load_failed_ids(vault_path: Path) -> set[str]:
     return {sid for sid, count in counts.items() if count >= MAX_RETRY_COUNT}
 
 
+def _write_last_result(vault_path: Path, conv_path: Path) -> None:
+    """Write a summary of last processing result for next session to display."""
+    import frontmatter
+    try:
+        post = frontmatter.load(conv_path)
+        concepts = post.get("concepts", [])
+        projects = post.get("projects", [])
+
+        summary_parts = [f"📝 대화 기록됨: {conv_path.stem}"]
+        if concepts:
+            summary_parts.append(f"   개념 {len(concepts)}개: {', '.join(concepts[:3])}")
+        if projects:
+            summary_parts.append(f"   프로젝트: {', '.join(projects)}")
+
+        result_file = vault_path / ".obsidian-brain" / ".last_result"
+        result_file.write_text("\n".join(summary_parts))
+    except Exception:
+        pass
+
+
+def _show_last_result(vault_path: Path, logger) -> None:
+    """Show result from previous session processing, then clear it."""
+    result_file = vault_path / ".obsidian-brain" / ".last_result"
+    if not result_file.exists():
+        return
+    content = result_file.read_text().strip()
+    if content:
+        logger.info(f"[이전 세션] {content}")
+    result_file.unlink(missing_ok=True)
+
+
 def setup_logging(vault_path: Path) -> None:
     log_dir = vault_path / ".obsidian-brain" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -72,6 +103,9 @@ def cmd_process(args) -> None:
         )
         if result:
             logger.info(f"Created: {result}")
+            _write_last_result(vault_path, result)
+        else:
+            logger.info("Session skipped (filtered or duplicate)")
     except Exception as e:
         logger.exception(f"Failed to process session {args.session_id}: {e}")
         failed_file = vault_path / ".obsidian-brain" / ".failed"
@@ -87,6 +121,9 @@ def cmd_recover(args) -> None:
     setup_logging(vault_path)
     logger = logging.getLogger(__name__)
     config = load_config(vault_path)
+
+    # Show what happened in previous session
+    _show_last_result(vault_path, logger)
 
     lock_path = vault_path / ".obsidian-brain" / "pipeline.lock"
     lock_fd = acquire_lock(lock_path, timeout=0)
