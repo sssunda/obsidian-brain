@@ -7,6 +7,7 @@ import frontmatter
 from obsidian_brain.digest import (
     build_digest_prompt,
     collect_recent_conversations,
+    collect_recent_experiences,
     mark_digest_done,
     should_run_digest,
     write_digest,
@@ -69,7 +70,7 @@ def test_build_digest_prompt_without_existing():
     conversations = [
         {"file": "test.md", "date": "2026-03-31", "content": "## 요약\n테스트"}
     ]
-    prompt = build_digest_prompt(conversations, "")
+    prompt = build_digest_prompt(conversations, [], "")
     assert "test.md" in prompt
     assert "UNIQUE_EXISTING_CONTENT" not in prompt
 
@@ -78,8 +79,83 @@ def test_build_digest_prompt_with_existing():
     conversations = [
         {"file": "test.md", "date": "2026-03-31", "content": "## 요약\n테스트"}
     ]
-    prompt = build_digest_prompt(conversations, "UNIQUE_EXISTING_CONTENT")
+    prompt = build_digest_prompt(conversations, [], "UNIQUE_EXISTING_CONTENT")
     assert "UNIQUE_EXISTING_CONTENT" in prompt
+
+
+def test_build_digest_prompt_with_experiences():
+    conversations = [
+        {"file": "test.md", "date": "2026-03-31", "content": "## 요약\n테스트"}
+    ]
+    experiences = [
+        {
+            "title": "Django QuerySet 평가 시점 함정",
+            "experience_type": "problem-solving",
+            "content": "## 교훈\n변수 할당 ≠ 실행",
+            "tags": ["django"],
+            "created": "2026-03-30",
+        }
+    ]
+    prompt = build_digest_prompt(conversations, experiences, "")
+    assert "경험 노트" in prompt
+    assert "Django QuerySet 평가 시점 함정" in prompt
+    assert "problem-solving" in prompt
+
+
+def test_collect_recent_experiences(tmp_path):
+    exp_dir = tmp_path / "Experiences"
+    exp_dir.mkdir()
+
+    note = """---
+type: experience
+experience_type: problem-solving
+created: '{today}'
+tags: [django]
+---
+
+# Django QuerySet 평가 시점 함정
+
+## 상황
+Admin에서 LogEntry bulk 조회가 느림
+
+## 선택
+values_list로 즉시 평가
+
+## 교훈
+변수 할당 ≠ 실행
+""".format(today=str(date.today()))
+    (exp_dir / "Django QuerySet 평가 시점 함정.md").write_text(note)
+
+    experiences = collect_recent_experiences(tmp_path, "Experiences", days=30)
+    assert len(experiences) == 1
+    assert experiences[0]["title"] == "Django QuerySet 평가 시점 함정"
+    assert experiences[0]["experience_type"] == "problem-solving"
+
+
+def test_collect_recent_experiences_empty_dir(tmp_path):
+    results = collect_recent_experiences(tmp_path, "Experiences")
+    assert results == []
+
+
+def test_collect_recent_experiences_old_notes_excluded(tmp_path):
+    exp_dir = tmp_path / "Experiences"
+    exp_dir.mkdir()
+
+    old_date = (date.today() - timedelta(days=60)).isoformat()
+    note = f"""---
+type: experience
+experience_type: debugging
+created: '{old_date}'
+tags: []
+---
+
+# 오래된 노트
+내용
+"""
+    (exp_dir / "old-note.md").write_text(note)
+
+    experiences = collect_recent_experiences(tmp_path, "Experiences", days=30)
+    assert experiences == []
 
 
 def test_write_digest(tmp_path):

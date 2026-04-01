@@ -2,8 +2,6 @@ from pathlib import Path
 import frontmatter
 from obsidian_brain.generator import (
     generate_conversation_doc,
-    generate_concept_doc,
-    update_concept_doc,
     generate_project_doc,
     update_project_doc,
     resolve_slug_conflict,
@@ -92,65 +90,6 @@ def test_conversation_doc_title_truncation(tmp_path):
     assert len(post["title"]) <= 80
 
 
-def test_generate_concept_doc(tmp_path):
-    concept = {
-        "name": "지식그래프",
-        "description": "노드와 엣지로 지식을 연결",
-        "aliases": ["knowledge graph"],
-        "existing_match": None,
-        "insight": "Obsidian 그래프 뷰와 결합 가능",
-    }
-    path = generate_concept_doc(
-        vault_path=tmp_path,
-        concepts_folder="Concepts",
-        concept=concept,
-        date="2026-03-25",
-        conversation_slug="2026-03-25-docker-networking",
-        related_concepts=["옵시디언"],
-    )
-    assert path.exists()
-    post = frontmatter.load(path)
-    assert post["type"] == "concept"
-    assert "knowledge graph" in post["aliases"]
-    assert "## 인사이트" in post.content
-
-
-def test_update_concept_doc_adds_conversation(tmp_path):
-    concepts_dir = tmp_path / "Concepts"
-    concepts_dir.mkdir()
-    existing = concepts_dir / "Docker.md"
-    existing.write_text("""---
-type: concept
-created: 2026-03-20
-updated: 2026-03-20
-aliases: []
-conversations: [2026-03-20-docker-basics]
----
-
-# Docker
-
-컨테이너 플랫폼.
-
-## 인사이트
-- (2026-03-20) 멀티스테이지 빌드
-
-## 관련 개념
-""")
-    update_concept_doc(
-        doc_path=existing,
-        conversation_slug="2026-03-25-docker-networking",
-        date="2026-03-25",
-        insight="Bridge vs Host 네트워크 차이",
-    )
-    post = frontmatter.load(existing)
-    assert "2026-03-25-docker-networking" in post["conversations"]
-    assert "Bridge vs Host" in post.content
-    assert post["updated"] == "2026-03-25"
-    # Verify chronological order: old insight first, new insight after
-    content = post.content
-    old_pos = content.find("멀티스테이지 빌드")
-    new_pos = content.find("Bridge vs Host")
-    assert old_pos < new_pos, "New insight should come after old insight (chronological)"
 
 
 def test_update_project_doc(tmp_path):
@@ -195,73 +134,6 @@ def test_resolve_slug_conflict(tmp_path):
     assert result == "2026-03-25-docker-networking-2"
 
 
-def test_concept_doc_none_description_filtered(tmp_path):
-    concept = {
-        "name": "TestConcept",
-        "description": None,
-        "aliases": [],
-        "existing_match": None,
-        "insight": "새 인사이트",
-    }
-    path = generate_concept_doc(
-        vault_path=tmp_path,
-        concepts_folder="Concepts",
-        concept=concept,
-        date="2026-03-25",
-        conversation_slug="test-conv",
-    )
-    post = frontmatter.load(path)
-    assert "None" not in post.content
-
-
-def test_update_concept_doc_skips_similar_insight(tmp_path):
-    concepts_dir = tmp_path / "Concepts"
-    concepts_dir.mkdir()
-    existing = concepts_dir / "Docker.md"
-    existing.write_text("""---
-type: concept
-created: 2026-03-20
-updated: 2026-03-20
-aliases: []
-conversations: []
----
-
-# Docker
-
-## 인사이트
-- (2026-03-20) 멀티스테이지 빌드로 이미지 크기 줄임
-
-## 관련 개념
-""")
-    update_concept_doc(
-        doc_path=existing,
-        conversation_slug="test",
-        date="2026-03-25",
-        insight="멀티스테이지 빌드로 이미지 크기를 줄임",  # Similar
-    )
-    post = frontmatter.load(existing)
-    insight_lines = [l for l in post.content.split("\n") if l.strip().startswith("- (")]
-    assert len(insight_lines) == 1  # Should not add duplicate
-
-
-def test_concept_doc_special_chars_in_name(tmp_path):
-    concept = {
-        "name": "API/REST:v2",
-        "description": "REST API v2",
-        "aliases": [],
-        "existing_match": None,
-        "insight": None,
-    }
-    path = generate_concept_doc(
-        vault_path=tmp_path,
-        concepts_folder="Concepts",
-        concept=concept,
-        date="2026-03-25",
-        conversation_slug="test",
-    )
-    assert path.exists()
-    assert "/" not in path.name
-    assert ":" not in path.name
 
 
 def test_generate_project_doc(tmp_path):
@@ -278,3 +150,75 @@ def test_generate_project_doc(tmp_path):
     post = frontmatter.load(path)
     assert post["type"] == "project"
     assert "obsidian-brain" in post.content
+
+
+def test_generate_experience_doc_problem_solving(tmp_path):
+    from obsidian_brain.generator import generate_experience_doc
+
+    experience = {
+        "title": "Django QuerySet 평가 시점 함정",
+        "experience_type": "problem-solving",
+        "sections": {
+            "상황": "Admin에서 LogEntry를 bulk로 조회하는데 페이지 로딩이 5초 이상 걸림",
+            "선택": ".all() 캐싱에 의존하지 않고, .values_list()로 즉시 평가하도록 변경",
+            "교훈": "Django QuerySet은 lazy evaluation이라 변수 할당 ≠ 실행",
+        },
+        "tags": ["django", "queryset", "performance"],
+    }
+    conversation_slug = "2026-03-30-django-admin-logentry"
+    date = "2026-03-30"
+    projects = ["wishos"]
+
+    doc_path = generate_experience_doc(
+        experience=experience,
+        conversation_slug=conversation_slug,
+        date=date,
+        projects=projects,
+        vault_path=tmp_path,
+        exp_folder="Experiences",
+    )
+
+    assert doc_path.exists()
+    content = doc_path.read_text()
+
+    # Frontmatter checks
+    assert "type: experience" in content
+    assert "ob-experience" in content
+    assert "experience_type: problem-solving" in content
+
+    # Section checks
+    assert "## 상황" in content
+    assert "5초 이상" in content
+    assert "## 선택" in content
+    assert "## 교훈" in content
+
+    # Links
+    assert "[[2026-03-30-django-admin-logentry]]" in content
+
+
+def test_generate_experience_doc_discovery(tmp_path):
+    from obsidian_brain.generator import generate_experience_doc
+
+    experience = {
+        "title": "LogEntry change_message 포맷 차이",
+        "experience_type": "discovery",
+        "sections": {
+            "발견": "Django의 LogEntry.change_message은 admin 자동 생성과 수동 생성의 포맷이 다름",
+            "맥락": "감사 로그 파싱할 때 두 포맷 모두 처리해야 함",
+        },
+        "tags": ["django", "admin"],
+    }
+
+    doc_path = generate_experience_doc(
+        experience=experience,
+        conversation_slug="2026-04-01-logentry-discovery",
+        date="2026-04-01",
+        projects=[],
+        vault_path=tmp_path,
+        exp_folder="Experiences",
+    )
+
+    content = doc_path.read_text()
+    assert "## 발견" in content
+    assert "## 맥락" in content
+    assert "## 상황" not in content  # no problem-solving sections

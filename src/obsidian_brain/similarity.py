@@ -21,21 +21,6 @@ def is_similar(a: str, b: str, threshold: float = DEFAULT_THRESHOLD) -> bool:
     return jaccard >= threshold
 
 
-def has_similar_insight(new_insight: str, content: str, threshold: float = DEFAULT_THRESHOLD) -> bool:
-    """Check if content already contains a similar insight line."""
-    for line in content.split("\n"):
-        line = line.strip()
-        if line.startswith("- (") and ")" in line:
-            existing = line.split(")", 1)[1].strip()
-            if is_similar(new_insight, existing, threshold):
-                return True
-    return False
-
-
-def count_insights(content: str) -> int:
-    """Count insight lines in content."""
-    return sum(1 for line in content.split("\n") if line.strip().startswith("- ("))
-
 
 def trim_insights(content: str, max_count: int = MAX_INSIGHTS) -> str:
     """Keep only the most recent N insights, removing oldest."""

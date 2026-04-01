@@ -5,9 +5,9 @@
 .ob-conversation .inline-title { color: var(--color-blue); }
 .ob-conversation .markdown-preview-sizer { border-left: 3px solid var(--color-blue); padding-left: 12px; }
 
-/* Concept docs: green accent */
-.ob-concept .inline-title { color: var(--color-green); }
-.ob-concept .markdown-preview-sizer { border-left: 3px solid var(--color-green); padding-left: 12px; }
+/* Experience notes: green accent */
+.ob-experience .inline-title { color: var(--color-green); }
+.ob-experience .markdown-preview-sizer { border-left: 3px solid var(--color-green); padding-left: 12px; }
 
 /* Project docs: amber accent */
 .ob-project .inline-title { color: var(--color-orange); }

@@ -5,7 +5,9 @@ from pathlib import Path
 
 import frontmatter
 
-from .similarity import is_similar, trim_insights
+import shutil
+
+from .similarity import is_similar
 
 logger = logging.getLogger(__name__)
 
@@ -104,57 +106,24 @@ def migrate_conversations(vault_path: Path) -> int:
     return count
 
 
-def migrate_concepts(vault_path: Path) -> int:
-    """Migrate concept docs: remove None text, deduplicate insights."""
+def migrate_concepts_to_experiences(vault_path: Path) -> dict:
+    """Migrate vault from concepts to experiences structure."""
     concepts_dir = vault_path / "Concepts"
-    if not concepts_dir.exists():
-        return 0
+    experiences_dir = vault_path / "Experiences"
 
-    count = 0
-    for md_file in concepts_dir.glob("*.md"):
-        try:
-            post = frontmatter.load(md_file)
-            changed = False
+    result = {"removed_concepts": 0, "created_experiences_dir": False}
 
-            # Add cssclasses if missing
-            if "cssclasses" not in post.metadata:
-                doc_type = post.get("type", "concept")
-                post["cssclasses"] = [f"ob-{doc_type}"]
-                changed = True
+    # Create Experiences directory
+    if not experiences_dir.exists():
+        experiences_dir.mkdir(parents=True)
+        result["created_experiences_dir"] = True
 
-            # Remove "None" text in body
-            if "\nNone\n" in post.content or post.content.startswith("None\n"):
-                post.content = post.content.replace("\nNone\n", "\n\n")
-                if post.content.startswith("None\n"):
-                    post.content = post.content[5:]
-                changed = True
+    # Remove old Concepts directory if it exists
+    if concepts_dir.exists():
+        result["removed_concepts"] = sum(1 for _ in concepts_dir.glob("*.md"))
+        shutil.rmtree(concepts_dir)
 
-            # Deduplicate insights
-            deduped = deduplicate_insights(post.content)
-            if deduped != post.content:
-                post.content = deduped
-                changed = True
-
-            # Trim excess insights
-            trimmed = trim_insights(post.content)
-            if trimmed != post.content:
-                post.content = trimmed
-                changed = True
-
-            # Remove empty sections
-            cleaned = remove_empty_sections(post.content)
-            if cleaned != post.content:
-                post.content = cleaned
-                changed = True
-
-            if changed:
-                md_file.write_text(frontmatter.dumps(post))
-                count += 1
-        except Exception as e:
-            logger.warning(f"Skip {md_file.name}: {e}")
-
-    logger.info(f"Migrated {count} concept docs")
-    return count
+    return result
 
 
 def migrate_digest(vault_path: Path) -> int:
@@ -198,7 +167,7 @@ def migrate_vault(vault_path: Path) -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     logger.info(f"Migrating vault: {vault_path}")
     c1 = migrate_conversations(vault_path)
-    c2 = migrate_concepts(vault_path)
+    c2 = migrate_concepts_to_experiences(vault_path)
     c3 = migrate_projects(vault_path)
     c4 = migrate_digest(vault_path)
-    logger.info(f"Done: {c1} conversations, {c2} concepts, {c3} projects, {c4} digest migrated")
+    logger.info(f"Done: {c1} conversations, {c2['removed_concepts']} concepts removed, {c3} projects, {c4} digest migrated")

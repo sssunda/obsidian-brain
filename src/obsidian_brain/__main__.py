@@ -34,34 +34,92 @@ def load_failed_ids(vault_path: Path) -> set[str]:
     return {sid for sid, count in counts.items() if count >= MAX_RETRY_COUNT}
 
 
-def _write_last_result(vault_path: Path, conv_path: Path) -> None:
-    """Write a summary of last processing result for next session to display."""
+def _write_last_result(vault_path: Path, conv_path: Path, config: dict) -> None:
+    """Write a JSON summary of last processing result for feedback collection."""
+    import json
     import frontmatter
     try:
-        post = frontmatter.load(conv_path)
-        concepts = post.get("concepts", [])
-        projects = post.get("projects", [])
+        exp_folder = config["folders"].get("experiences", "Experiences")
+        exp_dir = vault_path / exp_folder
 
-        summary_parts = [f"📝 대화 기록됨: {conv_path.stem}"]
-        if concepts:
-            summary_parts.append(f"   개념 {len(concepts)}개: {', '.join(concepts[:3])}")
-        if projects:
-            summary_parts.append(f"   프로젝트: {', '.join(projects)}")
+        experience_titles = []
+        if exp_dir.exists():
+            for f in exp_dir.glob("*.md"):
+                try:
+                    post = frontmatter.load(f)
+                    convs = post.metadata.get("conversations", [])
+                    if conv_path.stem in convs:
+                        experience_titles.append(f.stem)
+                except Exception:
+                    continue
 
+        result = {
+            "conversation": conv_path.stem,
+            "experiences": experience_titles,
+        }
         result_file = vault_path / ".obsidian-brain" / ".last_result"
-        result_file.write_text("\n".join(summary_parts))
+        result_file.write_text(json.dumps(result, ensure_ascii=False))
     except Exception:
         pass
 
 
+def _read_last_result(vault_path: Path) -> dict | None:
+    import json
+    result_path = vault_path / ".obsidian-brain" / ".last_result"
+    if not result_path.exists():
+        return None
+    try:
+        return json.loads(result_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _save_feedback(vault_path: Path, note_title: str, rating: str, reason: str = "") -> None:
+    import json
+    feedback_path = vault_path / ".obsidian-brain" / "feedback.jsonl"
+    entry = {
+        "date": str(date.today()),
+        "note": note_title,
+        "rating": rating,
+        "reason": reason,
+    }
+    with open(feedback_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def _show_last_result(vault_path: Path, logger) -> None:
-    """Show result from previous session processing, then clear it."""
-    result_file = vault_path / ".obsidian-brain" / ".last_result"
-    if not result_file.exists():
+    """Show experience notes from previous session and collect feedback."""
+    result = _read_last_result(vault_path)
+    if not result:
         return
-    content = result_file.read_text().strip()
-    if content:
-        logger.info(f"[이전 세션] {content}")
+
+    experiences = result.get("experiences", [])
+    if not experiences:
+        result_file = vault_path / ".obsidian-brain" / ".last_result"
+        result_file.unlink(missing_ok=True)
+        return
+
+    print(f"\n[이전 세션 경험 노트]")
+    for title in experiences:
+        print(f"  📝 {title}")
+    print()
+
+    try:
+        answer = input("유용했나요? (y/n/엔터=스킵): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        answer = ""
+
+    if answer in ("y", "n"):
+        reason = ""
+        if answer == "n":
+            try:
+                reason = input("이유 한 줄: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                reason = ""
+        for title in experiences:
+            _save_feedback(vault_path, title, answer, reason)
+
+    result_file = vault_path / ".obsidian-brain" / ".last_result"
     result_file.unlink(missing_ok=True)
 
 
@@ -84,6 +142,7 @@ def cmd_process(args) -> None:
     vault_path = Path(args.vault_path).expanduser().resolve()
     setup_logging(vault_path)
     logger = logging.getLogger(__name__)
+    config = load_config(vault_path)
 
     lock_path = vault_path / ".obsidian-brain" / "pipeline.lock"
     lock_fd = acquire_lock(lock_path, timeout=60)
@@ -103,7 +162,7 @@ def cmd_process(args) -> None:
         )
         if result:
             logger.info(f"Created: {result}")
-            _write_last_result(vault_path, result)
+            _write_last_result(vault_path, result, config)
         else:
             logger.info("Session skipped (filtered or duplicate)")
     except Exception as e:
@@ -225,11 +284,11 @@ def cmd_status(args) -> None:
 
     # Document counts
     conv_dir = vault_path / config["folders"]["conversations"]
-    concept_dir = vault_path / config["folders"]["concepts"]
+    exp_dir = vault_path / config["folders"].get("experiences", "Experiences")
     project_dir = vault_path / config["folders"]["projects"]
 
     conv_count = sum(1 for _ in conv_dir.rglob("*.md")) if conv_dir.exists() else 0
-    concept_count = sum(1 for _ in concept_dir.glob("*.md")) if concept_dir.exists() else 0
+    exp_count = sum(1 for _ in exp_dir.glob("*.md")) if exp_dir.exists() else 0
     project_count = sum(1 for _ in project_dir.glob("*.md")) if project_dir.exists() else 0
 
     # Digest status
@@ -252,7 +311,7 @@ Vault: {vault_path}
 
 Documents:
   Conversations: {conv_count}
-  Concepts:      {concept_count}
+  Experiences:   {exp_count}
   Projects:      {project_count}
 
 Processing:

@@ -2,7 +2,7 @@ import frontmatter
 
 from obsidian_brain.migrate import (
     deduplicate_insights,
-    migrate_concepts,
+    migrate_concepts_to_experiences,
     migrate_conversations,
     remove_empty_sections,
 )
@@ -74,18 +74,23 @@ def test_migrate_conversations_adds_type(tmp_path):
     assert migrated["type"] == "conversation"
 
 
-def test_migrate_concepts_removes_none(tmp_path):
+def test_migrate_concepts_to_experiences(tmp_path):
     concepts_dir = tmp_path / "Concepts"
     concepts_dir.mkdir()
+    (concepts_dir / "Old Concept.md").write_text("old content")
+    (concepts_dir / "Another Concept.md").write_text("old content")
 
-    post = frontmatter.Post(
-        content="# Test\n\nNone\n\n## 인사이트\n- (2026-03-01) test",
-        type="concept",
-    )
-    (concepts_dir / "Test.md").write_text(frontmatter.dumps(post))
+    result = migrate_concepts_to_experiences(tmp_path)
 
-    count = migrate_concepts(tmp_path)
-    assert count == 1
+    assert result["removed_concepts"] == 2
+    assert result["created_experiences_dir"] is True
+    assert not concepts_dir.exists()
+    assert (tmp_path / "Experiences").exists()
 
-    migrated = frontmatter.load(concepts_dir / "Test.md")
-    assert "None" not in migrated.content
+
+def test_migrate_concepts_to_experiences_no_concepts(tmp_path):
+    result = migrate_concepts_to_experiences(tmp_path)
+
+    assert result["removed_concepts"] == 0
+    assert result["created_experiences_dir"] is True
+    assert (tmp_path / "Experiences").exists()
