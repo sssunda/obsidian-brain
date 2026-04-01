@@ -107,10 +107,47 @@ def load_existing_digest(vault_path: Path) -> str:
     return ""
 
 
-def build_digest_prompt(conversations: list[dict], existing_digest: str) -> str:
+def collect_recent_experiences(vault_path: Path, exp_folder: str, days: int = 30) -> list[dict]:
+    """Collect experience notes from the last N days."""
+    exp_dir = vault_path / exp_folder
+    if not exp_dir.exists():
+        return []
+
+    cutoff = date.today() - timedelta(days=days)
+    experiences = []
+
+    for f in exp_dir.glob("*.md"):
+        try:
+            post = frontmatter.load(f)
+            created = post.metadata.get("created", "")
+            if isinstance(created, str):
+                created_date = date.fromisoformat(created)
+            else:
+                created_date = created
+            if created_date >= cutoff:
+                experiences.append({
+                    "title": f.stem,
+                    "experience_type": post.metadata.get("experience_type", ""),
+                    "content": post.content,
+                    "tags": post.metadata.get("tags", []),
+                    "created": str(created_date),
+                })
+        except (ValueError, KeyError, OSError):
+            continue
+
+    return experiences
+
+
+def build_digest_prompt(conversations: list[dict], experiences: list[dict], existing_digest: str) -> str:
     conv_text = ""
     for conv in conversations:
         conv_text += f"### {conv['file']} ({conv['date']})\n{conv['content']}\n\n"
+
+    exp_text = ""
+    if experiences:
+        exp_text = "\n[경험 노트]\n"
+        for exp in experiences:
+            exp_text += f"### {exp['title']} ({exp['created']}, {exp['experience_type']})\n{exp['content']}\n\n"
 
     existing_section = ""
     if existing_digest:
@@ -122,8 +159,7 @@ def build_digest_prompt(conversations: list[dict], existing_digest: str) -> str:
     return f"""다음은 사용자의 최근 AI 대화 기록들이다. 각 대화에서 추출된 의사결정 패턴과 선호/원칙이 포함되어 있다.
 
 {existing_section}[최근 대화 기록]
-{conv_text}
-
+{conv_text}{exp_text}
 이 대화들을 종합 분석해서 사용자의 핵심 원칙/성향, 반복되는 의사결정 패턴, 성장/변화를 정리해줘.
 
 규칙:
@@ -171,7 +207,7 @@ def write_digest(vault_path: Path, analysis: dict) -> Path:
     return digest_path
 
 
-def run_daily_digest(vault_path: Path, conv_folder: str = "Conversations", max_retries: int = 3, digest_days: int = 30) -> Path | None:
+def run_daily_digest(vault_path: Path, conv_folder: str = "Conversations", exp_folder: str = "Experiences", max_retries: int = 3, digest_days: int = 30) -> Path | None:
     if not should_run_digest(vault_path):
         logger.info("Digest already ran today, skipping")
         return None
@@ -183,7 +219,8 @@ def run_daily_digest(vault_path: Path, conv_folder: str = "Conversations", max_r
         return None
 
     existing = load_existing_digest(vault_path)
-    prompt = build_digest_prompt(conversations, existing)
+    experiences = collect_recent_experiences(vault_path, exp_folder, days=digest_days)
+    prompt = build_digest_prompt(conversations, experiences, existing)
 
     logger.info(f"Running digest with {len(conversations)} recent conversations")
     analysis = run_digest_analysis(prompt, max_retries=max_retries)
