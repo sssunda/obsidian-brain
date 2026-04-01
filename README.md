@@ -35,18 +35,27 @@ Claude Code 세션 종료
 | 의사결정 패턴 | 상황 → 선택 → 이유 (왜 그렇게 했는지) |
 | 드러난 선호/원칙 | 행동에서 추론한 성향 (예: "자동화 선호", "안전장치 중시") |
 | 핵심 결정사항 | 내린 결정 목록 |
-| 관련 개념 | `[[개념]]` 링크 |
+| 관련 경험 | `[[경험 노트]]` 링크 |
 | 관련 프로젝트 | `[[프로젝트]]` 링크 |
 
-### 2. Concepts (개념)
+### 2. Experiences (경험 노트)
 
-`Concepts/{개념명}.md`
+`Experiences/{제목}.md`
 
-**추출 기준:** "다른 프로젝트에서도 재사용할 수 있는 지식인가?"
-- 시스템/아키텍처/설계 수준의 핵심 개념만 (대화당 0~3개)
-- 일회성 버그, 특정 함수명, 사소한 패턴은 제외
-- 유사 인사이트 자동 중복 제거 (SequenceMatcher + Jaccard 이중 체크)
-- 개념당 인사이트 최대 10개 유지 (초과 시 오래된 것 삭제)
+대화에서 실제로 부딪힌 문제, 발견, 삽질을 기록. 없으면 안 만듦.
+
+**3가지 타입:**
+
+| 타입 | 섹션 | 예시 |
+|------|------|------|
+| problem-solving | 상황 → 선택 → 교훈 | "Django QuerySet 평가 시점 함정" |
+| discovery | 발견 → 맥락 | "LogEntry change_message 포맷 차이" |
+| troubleshooting | 삽질 → 원인 → 해결 | "prefetch_related가 안 먹힐 때" |
+
+- 제목은 대화에서 사용자가 실제로 쓴 표현 기반 (추상적 조어 금지)
+- 1대화 = 1노트 (같은 주제여도 합치지 않음)
+- 단순 작업 수행은 경험이 아님 — LLM이 "배움이 있는가" 판단
+- 세션 시작 시 이전 경험 노트에 대한 피드백 수집 (y/n)
 
 ### 3. Projects (프로젝트)
 
@@ -103,7 +112,7 @@ bash scripts/install-hooks.sh
 스크립트가 자동으로:
 1. Vault 경로 입력 받기
 2. `.obsidian-brain/` 디렉토리 + 기본 config 생성
-3. `Conversations/`, `Concepts/`, `Projects/` 폴더 생성
+3. `Conversations/`, `Experiences/`, `Projects/` 폴더 생성
 4. `~/.claude/settings.json`에 hooks 자동 병합 (기존 hooks 있으면 백업)
 5. CSS snippet 설치 (문서 타입별 컬러 코딩)
 6. Brain Dashboard 생성 (Dataview 기반)
@@ -123,13 +132,11 @@ processed_retention_days: 30 # 복구/다이제스트 대상 기간
 model: sonnet                # 분석에 사용할 Claude 모델
 batch_limit: 10              # Recovery 배치 크기
 rate_limit_seconds: 2        # 세션 간 대기 시간
-max_insights: 10             # 개념당 인사이트 최대 개수
-similarity_threshold: 0.5    # 인사이트 유사도 판단 임계값 (0~1)
 truncate_head: 15            # 긴 대화 앞부분 메시지 수
 truncate_tail: 85            # 긴 대화 뒷부분 메시지 수
 folders:
   conversations: Conversations
-  concepts: Concepts
+  experiences: Experiences
   projects: Projects
 ```
 
@@ -158,7 +165,7 @@ obsidian-brain status --vault-path <vault>
 | 타입 | 색상 | cssclass |
 |------|------|----------|
 | Conversation | 파랑 | `ob-conversation` |
-| Concept | 초록 | `ob-concept` |
+| Experience | 초록 | `ob-experience` |
 | Project | 주황 | `ob-project` |
 | Digest | 보라 | `ob-digest` |
 
@@ -169,7 +176,7 @@ obsidian-brain status --vault-path <vault>
 `Brain Dashboard.md`에 Dataview 쿼리 5종 포함:
 - 최근 대화 10개
 - 프로젝트별 대화 수
-- 최근 업데이트된 개념
+- 최근 경험 노트
 - 이번 주 대화
 - 태그별 대화 수
 
@@ -199,10 +206,9 @@ bash scripts/migrate-docs.sh [vault-path]
 
 수행 내용:
 - `type` frontmatter 추가
-- `cssclasses` 추가 (Conversation, Concept, Project, Digest 모두)
-- `None` 텍스트 제거
+- `cssclasses` 추가 (Conversation, Experience, Project, Digest 모두)
+- 기존 `Concepts/` 폴더 제거 → `Experiences/` 폴더 생성
 - 빈 섹션 제거
-- 인사이트 중복 정리 + 최대 개수 제한
 - 연속 빈 줄 정리
 
 ## 훅 동작
