@@ -56,7 +56,7 @@ def build_json_schema() -> dict:
     return ANALYSIS_SCHEMA
 
 
-def build_prompt(parsed: dict, projects: list[str] | None = None) -> str:
+def build_prompt(parsed: dict, projects: list[str] | None = None, cwd: str | None = None) -> str:
     messages = truncate_messages(parsed["messages"])
     date = parsed["date"]
     transcript = "\n".join(
@@ -64,14 +64,18 @@ def build_prompt(parsed: dict, projects: list[str] | None = None) -> str:
         for m in messages
     )
 
-    project_list = ""
+    context_lines = []
     if projects:
-        project_list = f"\n기존 프로젝트: {', '.join(projects)}"
+        context_lines.append(f"기존 프로젝트: {', '.join(projects)}")
+    if cwd:
+        dir_name = cwd.rstrip("/").split("/")[-1] if "/" in cwd else cwd
+        context_lines.append(f"작업 디렉토리: {cwd} (프로젝트 힌트: {dir_name})")
+    context_section = "\n".join(context_lines)
 
     return f"""다음 AI 대화를 분석해줘.
 
 날짜: {date}
-{project_list}
+{context_section}
 
 ## 분석 지침
 
@@ -81,7 +85,7 @@ def build_prompt(parsed: dict, projects: list[str] | None = None) -> str:
 4. decisions: 핵심 결정사항 목록
 5. reasoning_patterns: situation/choice/why 구조의 의사결정 패턴 (실제로 판단/선택이 있었을 때만)
 6. preferences: 드러난 행동 선호/원칙 (명시적 + 암시적)
-7. projects: 관련 프로젝트 이름. 기존 목록에 있으면 매칭, 없으면 새 이름 사용 (영문 kebab-case 또는 실제 프로젝트명)
+7. projects: 관련 프로젝트 이름. 기존 목록에 있으면 매칭, 없으면 새 이름 사용. 작업 디렉토리명이 힌트가 될 수 있지만, 대화 내용이 다른 프로젝트에 관한 것이면 그쪽으로 분류해
 
 ## 경험 추출 (experiences)
 
@@ -124,6 +128,6 @@ def truncate_messages(messages: list[dict], max_chars: int = 50000, head_count: 
     return head + [separator] + tail
 
 
-def analyze(parsed: dict, projects: list[str] | None = None, model: str = "sonnet") -> dict:
-    prompt = build_prompt(parsed, projects=projects)
+def analyze(parsed: dict, projects: list[str] | None = None, cwd: str | None = None, model: str = "sonnet") -> dict:
+    prompt = build_prompt(parsed, projects=projects, cwd=cwd)
     return call_claude(prompt, ANALYSIS_SCHEMA, model=model)

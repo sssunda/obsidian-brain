@@ -16,6 +16,16 @@ from .vault import load_processed_ids, save_processed_id, scan_projects
 logger = logging.getLogger(__name__)
 
 
+def _extract_cwd_from_path(transcript_path: Path) -> str | None:
+    """Extract the original cwd from the encoded transcript directory name."""
+    # Transcript lives at ~/.claude/projects/{encoded-cwd}/{session}.jsonl
+    # encoded-cwd replaces / with -
+    encoded = transcript_path.parent.name
+    if encoded.startswith("-"):
+        return encoded.replace("-", "/")
+    return None
+
+
 def process_session(
     transcript_path: Path,
     vault_path: Path,
@@ -33,10 +43,12 @@ def process_session(
         return None
 
     projects = scan_projects(vault_path, config["folders"]["projects"])
+    cwd = _extract_cwd_from_path(transcript_path)
 
     analysis = analyze(
         parsed,
         projects=projects,
+        cwd=cwd,
         model=config.get("model", "sonnet"),
     )
 
