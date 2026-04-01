@@ -81,7 +81,7 @@ def build_prompt(parsed: dict, projects: list[str] | None = None) -> str:
 4. decisions: 핵심 결정사항 목록
 5. reasoning_patterns: situation/choice/why 구조의 의사결정 패턴 (실제로 판단/선택이 있었을 때만)
 6. preferences: 드러난 행동 선호/원칙 (명시적 + 암시적)
-7. projects: 관련 프로젝트 이름 (기존 프로젝트 목록에서 매칭)
+7. projects: 관련 프로젝트 이름. 기존 목록에 있으면 매칭, 없으면 새 이름 사용 (영문 kebab-case 또는 실제 프로젝트명)
 
 ## 경험 추출 (experiences)
 
