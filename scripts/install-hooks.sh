@@ -43,7 +43,7 @@ processed_retention_days: 30
 slug_language: en
 folders:
   conversations: Conversations
-  concepts: Concepts
+  experiences: Experiences
   projects: Projects
 EOF
     echo "✓ Config 생성: $VAULT_PATH/.obsidian-brain/config.yaml"
@@ -51,7 +51,7 @@ fi
 
 # Create vault directories
 mkdir -p "$VAULT_PATH/Conversations"
-mkdir -p "$VAULT_PATH/Concepts"
+mkdir -p "$VAULT_PATH/Experiences"
 mkdir -p "$VAULT_PATH/Projects"
 echo "✓ Vault 폴더 생성 완료"
 

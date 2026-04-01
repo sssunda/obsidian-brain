@@ -12,7 +12,7 @@ def test_load_config_defaults(tmp_path):
     assert config["processed_retention_days"] == 30
     assert config["slug_language"] == "en"
     assert config["folders"]["conversations"] == "Conversations"
-    assert config["folders"]["concepts"] == "Concepts"
+    assert config["folders"]["experiences"] == "Experiences"
     assert config["folders"]["projects"] == "Projects"
 
 
