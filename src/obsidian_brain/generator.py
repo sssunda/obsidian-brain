@@ -3,8 +3,6 @@ from pathlib import Path
 
 import frontmatter
 
-from .similarity import has_similar_insight, trim_insights
-
 
 def _append_to_section(content: str, section_heading: str, new_line: str) -> str:
     """Append a line at the end of a markdown section."""
@@ -52,8 +50,7 @@ def generate_conversation_doc(
     slug = resolve_slug_conflict(conv_dir, f"{date}-{analysis['title_slug']}")
     filepath = conv_dir / f"{slug}.md"
 
-    concepts = [c["name"] for c in analysis.get("concepts", [])]
-    concept_links = "\n".join(f"- [[{c}]]" for c in concepts)
+    experiences = analysis.get("experiences", [])
     project_links = "\n".join(f"- [[{p}]]" for p in analysis.get("projects", []))
     decisions = "\n".join(f"- {d}" for d in analysis.get("decisions", []))
 
@@ -72,8 +69,9 @@ def generate_conversation_doc(
         sections.append(f"## 드러난 선호/원칙\n{preferences}")
     if decisions.strip():
         sections.append(f"## 핵심 결정사항\n{decisions}")
-    if concept_links.strip():
-        sections.append(f"## 관련 개념\n{concept_links}")
+    if experiences:
+        exp_links = "\n".join(f"- [[{e['title']}]]" for e in experiences)
+        sections.append(f"## 관련 경험\n{exp_links}")
     if project_links.strip():
         sections.append(f"## 관련 프로젝트\n{project_links}")
 
@@ -94,7 +92,7 @@ def generate_conversation_doc(
         date=date,
         title=title,
         tags=analysis.get("tags", []),
-        concepts=concepts,
+        experiences=[e["title"] for e in experiences],
         projects=analysis.get("projects", []),
     )
 
@@ -102,82 +100,58 @@ def generate_conversation_doc(
     return filepath
 
 
-def generate_concept_doc(
+def generate_experience_doc(
+    experience: dict,
+    conversation_slug: str,
+    date: str,
+    projects: list[str],
     vault_path: Path,
-    concepts_folder: str,
-    concept: dict,
-    date: str,
-    conversation_slug: str,
-    related_concepts: list[str] | None = None,
+    exp_folder: str = "Experiences",
 ) -> Path:
-    concepts_dir = vault_path / concepts_folder
-    concepts_dir.mkdir(parents=True, exist_ok=True)
+    """Generate a single experience note."""
+    title = experience["title"]
+    exp_type = experience["experience_type"]
+    sections = experience["sections"]
+    tags = experience.get("tags", [])
 
-    filepath = concepts_dir / f"{sanitize_filename(concept['name'])}.md"
+    # Build sections content
+    body_parts = []
+    for heading, text in sections.items():
+        body_parts.append(f"## {heading}\n\n{text}")
 
-    related = related_concepts or []
-    related_links = "\n".join(f"- [[{r}]]" for r in related if r != concept["name"])
+    # Related links
+    links = [f"- [[{conversation_slug}]]"]
+    body_parts.append("## 관련 대화\n\n" + "\n".join(links))
 
-    insight_section = ""
-    if concept.get("insight"):
-        insight_section = f"- ({date}) {concept['insight']}"
+    body = "\n\n".join(body_parts)
 
-    description = concept.get('description') or ''
+    metadata = {
+        "type": "experience",
+        "cssclasses": ["ob-experience"],
+        "created": date,
+        "experience_type": exp_type,
+        "tags": tags,
+        "conversations": [conversation_slug],
+        "projects": projects,
+    }
 
-    post = frontmatter.Post(
-        content=f"""# {concept['name']}
+    post = frontmatter.Post(content=f"# {title}\n\n{body}", **metadata)
+    output = frontmatter.dumps(post) + "\n"
 
-{description}
+    exp_dir = vault_path / exp_folder
+    exp_dir.mkdir(parents=True, exist_ok=True)
 
-## 인사이트
-{insight_section}
+    filename = sanitize_filename(title) + ".md"
+    doc_path = exp_dir / filename
 
-## 관련 개념
-{related_links}""",
-        type="concept",
-        cssclasses=["ob-concept"],
-        created=date,
-        updated=date,
-        aliases=concept.get("aliases", []),
-        conversations=[conversation_slug],
-    )
+    # Handle filename conflicts
+    if doc_path.exists():
+        slug = sanitize_filename(title)
+        new_slug = resolve_slug_conflict(exp_dir, slug)
+        doc_path = exp_dir / f"{new_slug}.md"
 
-    filepath.write_text(frontmatter.dumps(post))
-    return filepath
-
-
-def update_concept_doc(
-    doc_path: Path,
-    conversation_slug: str,
-    date: str,
-    insight: str | None = None,
-) -> None:
-    try:
-        post = frontmatter.load(doc_path)
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning(f"Skipping corrupted concept doc {doc_path.name}: {e}")
-        return
-
-    convs = post.get("conversations", [])
-    if conversation_slug not in convs:
-        convs.append(conversation_slug)
-    post["conversations"] = convs
-    post["updated"] = date
-
-    # Add insight at end of section (chronological order), skip similar duplicates
-    if insight and not has_similar_insight(insight, post.content):
-        insight_line = f"- ({date}) {insight}"
-        if "## 인사이트" in post.content:
-            post.content = _append_to_section(post.content, "## 인사이트", insight_line)
-        else:
-            post.content += f"\n\n## 인사이트\n{insight_line}"
-
-    # Trim to max insights to prevent unbounded growth
-    from .similarity import MAX_INSIGHTS
-    post.content = trim_insights(post.content, max_count=MAX_INSIGHTS)
-
-    doc_path.write_text(frontmatter.dumps(post))
+    doc_path.write_text(output, encoding="utf-8")
+    return doc_path
 
 
 def generate_project_doc(
