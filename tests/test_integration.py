@@ -10,28 +10,23 @@ from obsidian_brain.pipeline import process_session
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-def _mock_analyze(parsed, concepts, projects, max_retries=3, existing_insights=None, model="sonnet"):
+def _mock_analyze(parsed, projects, model="sonnet"):
     """Return a realistic analysis result without calling claude -p."""
     return {
         "summary": "Docker 네트워킹의 bridge와 host 차이를 배웠다",
         "decisions": [],
-        "concepts": [
+        "experiences": [
             {
-                "name": "Docker",
-                "description": None,
-                "aliases": [],
-                "existing_match": "Docker",
-                "insight": "bridge는 격리, host는 공유",
-            },
-            {
-                "name": "컨테이너 네트워킹",
-                "description": "컨테이너 간 통신을 관리하는 기술",
-                "aliases": ["container networking"],
-                "existing_match": None,
-                "insight": None,
-            },
+                "title": "Docker bridge vs host 네트워크 차이",
+                "experience_type": "discovery",
+                "sections": {
+                    "상황": "Docker 네트워킹 옵션을 알아보던 중",
+                    "선택": "bridge 모드 사용",
+                    "교훈": "bridge는 격리, host는 공유",
+                },
+                "tags": ["docker", "networking"],
+            }
         ],
-        "concept_relations": [["Docker", "컨테이너 네트워킹"]],
         "tags": ["docker", "networking"],
         "projects": [],
         "title_slug": "docker-networking",
@@ -48,28 +43,9 @@ def test_full_pipeline_creates_documents(mock_analyze, tmp_path):
     brain_dir.mkdir()
     (brain_dir / ".processed").write_text("")
 
-    # Create existing concept
-    concepts_dir = vault / "Concepts"
-    concepts_dir.mkdir()
-    docker_doc = concepts_dir / "Docker.md"
-    docker_doc.write_text("""---
-type: concept
-created: 2026-03-20
-updated: 2026-03-20
-aliases: []
-conversations: []
----
-
-# Docker
-
-컨테이너 플랫폼.
-
-## 인사이트
-
-## 관련 개념
-""")
-
+    (vault / "Experiences").mkdir()
     (vault / "Projects").mkdir()
+    (vault / "Conversations").mkdir()
 
     result = process_session(
         transcript_path=FIXTURES / "sample_transcript.jsonl",
@@ -82,15 +58,12 @@ conversations: []
     assert result.exists()
     assert "docker-networking" in result.name
 
-    # Existing concept updated
-    docker_content = docker_doc.read_text()
-    assert "bridge는 격리" in docker_content
-
-    # New concept created
-    new_concept = concepts_dir / "컨테이너 네트워킹.md"
-    assert new_concept.exists()
-    post = frontmatter.load(new_concept)
-    assert "container networking" in post.get("aliases", [])
+    # Experience note created
+    exp_files = list((vault / "Experiences").glob("*.md"))
+    assert len(exp_files) == 1
+    exp_post = frontmatter.load(exp_files[0])
+    assert exp_post.get("experience_type") == "discovery"
+    assert "bridge는 격리" in exp_post.content
 
     # Session marked as processed
     processed = (brain_dir / ".processed").read_text()

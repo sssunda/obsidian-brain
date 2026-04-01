@@ -1,12 +1,7 @@
 from pathlib import Path
-from obsidian_brain.vault import scan_concepts, scan_projects, load_processed_ids, save_processed_id, rotate_processed
+from obsidian_brain.vault import scan_projects, load_processed_ids, save_processed_id, rotate_processed
 
 SAMPLE_VAULT = Path(__file__).parent / "fixtures" / "sample_vault"
-
-
-def test_scan_concepts():
-    concepts = scan_concepts(SAMPLE_VAULT, "Concepts")
-    assert "Docker" in concepts
 
 
 def test_scan_projects():
