@@ -14,7 +14,15 @@ def parse_transcript(transcript_path: Path) -> dict:
 
             if record_type == "user":
                 content = record.get("message", {}).get("content", "")
-                if isinstance(content, str) and content.strip():
+                if isinstance(content, list):
+                    text_parts = []
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text_parts.append(block.get("text", ""))
+                    combined = "\n".join(text_parts).strip()
+                    if combined:
+                        messages.append({"role": "user", "content": combined})
+                elif isinstance(content, str) and content.strip():
                     messages.append({"role": "user", "content": content})
 
             elif record_type == "assistant":
