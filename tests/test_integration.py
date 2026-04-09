@@ -10,11 +10,12 @@ from obsidian_brain.pipeline import process_session
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-def _mock_analyze(parsed, projects=None, cwd=None, model="sonnet"):
+def _mock_analyze(parsed, projects_config=None, cwd=None, existing_experiences=None, about=None, model="sonnet"):
     """Return a realistic analysis result without calling claude -p."""
     return {
         "summary": "Docker 네트워킹의 bridge와 host 차이를 배웠다",
         "decisions": [],
+        "daily_entries": [],
         "experiences": [
             {
                 "title": "Docker bridge vs host 네트워크 차이",
@@ -28,7 +29,6 @@ def _mock_analyze(parsed, projects=None, cwd=None, model="sonnet"):
             }
         ],
         "tags": ["docker", "networking"],
-        "projects": [],
         "title_slug": "docker-networking",
     }
 
@@ -53,10 +53,11 @@ def test_full_pipeline_creates_documents(mock_analyze, tmp_path):
         min_messages=2,
     )
 
-    # Conversation doc created
+    # Daily note created
     assert result is not None
     assert result.exists()
-    assert "docker-networking" in result.name
+    assert result.suffix == ".md"
+    assert result.parent.name == "Daily"
 
     # Experience note created
     exp_files = list((vault / "Experiences").glob("*.md"))

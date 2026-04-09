@@ -154,12 +154,71 @@ def generate_experience_doc(
     return doc_path
 
 
+def generate_daily_doc(
+    vault_path: Path,
+    daily_folder: str,
+    date: str,
+    daily_entries: list[dict],
+    tags: list[str],
+) -> Path:
+    """Create or append to a daily note."""
+    daily_dir = vault_path / daily_folder
+    daily_dir.mkdir(parents=True, exist_ok=True)
+    filepath = daily_dir / f"{date}.md"
+
+    if filepath.exists():
+        post = frontmatter.load(filepath)
+        # Merge tags
+        existing_tags = post.get("tags", [])
+        merged_tags = list(dict.fromkeys(existing_tags + tags))
+        post["tags"] = merged_tags
+
+        # Merge projects
+        existing_projects = post.get("projects", [])
+        new_projects = [e["project"] for e in daily_entries if e["project"]]
+        merged_projects = list(dict.fromkeys(existing_projects + new_projects))
+        post["projects"] = merged_projects
+
+        # Append entries to sections
+        for entry in daily_entries:
+            project = entry["project"]
+            bullets_text = "\n".join(f"- {b}" for b in entry["bullets"])
+            heading = f"## [[{project}]]" if project else "## 기타"
+
+            if heading in post.content:
+                post.content = _append_to_section(post.content, heading, bullets_text)
+            else:
+                post.content = post.content.rstrip() + f"\n\n{heading}\n{bullets_text}"
+
+        filepath.write_text(frontmatter.dumps(post))
+    else:
+        projects = [e["project"] for e in daily_entries if e["project"]]
+        projects = list(dict.fromkeys(projects))
+
+        sections = []
+        for entry in daily_entries:
+            project = entry["project"]
+            heading = f"## [[{project}]]" if project else "## 기타"
+            bullets_text = "\n".join(f"- {b}" for b in entry["bullets"])
+            sections.append(f"{heading}\n{bullets_text}")
+
+        content = "\n\n".join(sections)
+        post = frontmatter.Post(
+            content=content,
+            date=date,
+            projects=projects,
+            tags=tags,
+        )
+        filepath.write_text(frontmatter.dumps(post))
+
+    return filepath
+
+
 def generate_project_doc(
     vault_path: Path,
     projects_folder: str,
     project_name: str,
     date: str,
-    conversation_slug: str,
     summary: str,
     decisions: list[str] | None = None,
 ) -> Path:
@@ -168,22 +227,21 @@ def generate_project_doc(
 
     filepath = projects_dir / f"{sanitize_filename(project_name)}.md"
 
-    decision_lines = "\n".join(f"- {d}" for d in (decisions or []))
+    decision_lines = ""
+    if decisions:
+        decision_lines = "\n".join(f"- {date}: {d}" for d in decisions)
 
     post = frontmatter.Post(
-        content=f"""# {project_name}
+        content=f"""## 개요
 
-## 대화 타임라인
-- [[{conversation_slug}]] — {summary}
+## 핵심 결정
+{decision_lines}
 
-## 핵심 결정사항
-{decision_lines}""",
-        type="project",
-        cssclasses=["ob-project"],
-        created=date,
-        updated=date,
+## 최근 작업
+- [[{date}]] {summary}""",
+        title=project_name,
         status="active",
-        conversations=[conversation_slug],
+        updated=date,
     )
 
     filepath.write_text(frontmatter.dumps(post))
@@ -192,7 +250,6 @@ def generate_project_doc(
 
 def update_project_doc(
     doc_path: Path,
-    conversation_slug: str,
     date: str,
     summary: str,
     decisions: list[str] | None = None,
@@ -204,21 +261,23 @@ def update_project_doc(
         logging.getLogger(__name__).warning(f"Skipping corrupted project doc {doc_path.name}: {e}")
         return
 
-    convs = post.get("conversations", [])
-    if conversation_slug not in convs:
-        convs.append(conversation_slug)
-    post["conversations"] = convs
     post["updated"] = date
 
-    # Add to timeline at end of section
-    timeline_entry = f"- [[{conversation_slug}]] — {summary}"
-    if "## 대화 타임라인" in post.content:
-        post.content = _append_to_section(post.content, "## 대화 타임라인", timeline_entry)
+    # Add to 최근 작업
+    work_entry = f"- [[{date}]] {summary}"
+    if "## 최근 작업" in post.content:
+        post.content = _append_to_section(post.content, "## 최근 작업", work_entry)
+    else:
+        post.content = post.content.rstrip() + f"\n\n## 최근 작업\n{work_entry}"
 
-    # Add decisions at end of section
+    # Add decisions
     if decisions:
         for d in decisions:
+            decision_entry = f"- {date}: {d}"
             if d not in post.content:
-                post.content = _append_to_section(post.content, "## 핵심 결정사항", f"- {d}")
+                if "## 핵심 결정" in post.content:
+                    post.content = _append_to_section(post.content, "## 핵심 결정", decision_entry)
+                else:
+                    post.content = post.content.rstrip() + f"\n\n## 핵심 결정\n{decision_entry}"
 
     doc_path.write_text(frontmatter.dumps(post))

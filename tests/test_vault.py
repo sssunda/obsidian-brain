@@ -28,3 +28,22 @@ def test_save_processed_id(tmp_path):
     save_processed_id(tmp_path, "new-session-123")
     ids = load_processed_ids(tmp_path)
     assert "new-session-123" in ids
+
+
+def test_scan_experiences(tmp_path):
+    from obsidian_brain.vault import scan_experiences
+    exp_dir = tmp_path / "Experiences"
+    exp_dir.mkdir()
+    (exp_dir / "Django QuerySet 평가 시점 함정.md").write_text("# test")
+    (exp_dir / "UUID PK 전환이 전체 스택을 깨뜨림.md").write_text("# test")
+
+    titles = scan_experiences(tmp_path, "Experiences")
+    assert "Django QuerySet 평가 시점 함정" in titles
+    assert "UUID PK 전환이 전체 스택을 깨뜨림" in titles
+    assert len(titles) == 2
+
+
+def test_scan_experiences_empty(tmp_path):
+    from obsidian_brain.vault import scan_experiences
+    titles = scan_experiences(tmp_path, "Experiences")
+    assert titles == []

@@ -97,30 +97,26 @@ def test_update_project_doc(tmp_path):
     projects_dir.mkdir()
     existing = projects_dir / "my-project.md"
     existing.write_text("""---
-type: project
-created: 2026-03-20
-updated: 2026-03-20
+title: my-project
+updated: '2026-03-20'
 status: active
-conversations: [2026-03-20-initial-setup]
 ---
 
-# my-project
+## 개요
 
-## 대화 타임라인
-- [[2026-03-20-initial-setup]] — 초기 셋업
+## 핵심 결정
+- 2026-03-20: Python 사용
 
-## 핵심 결정사항
-- Python 사용
+## 최근 작업
+- [[2026-03-20]] 초기 셋업
 """)
     update_project_doc(
         doc_path=existing,
-        conversation_slug="2026-03-25-docker-networking",
         date="2026-03-25",
         summary="Docker 설정 추가",
         decisions=["Docker Compose 사용"],
     )
     post = frontmatter.load(existing)
-    assert "2026-03-25-docker-networking" in post["conversations"]
     assert "Docker 설정 추가" in post.content
     assert "Docker Compose 사용" in post.content
     assert post["updated"] == "2026-03-25"
@@ -142,14 +138,34 @@ def test_generate_project_doc(tmp_path):
         projects_folder="Projects",
         project_name="obsidian-brain",
         date="2026-03-25",
-        conversation_slug="2026-03-25-obsidian-design",
         summary="시스템 설계",
         decisions=["Phase 1: Claude Code만"],
     )
     assert path.exists()
     post = frontmatter.load(path)
-    assert post["type"] == "project"
-    assert "obsidian-brain" in post.content
+    assert post["title"] == "obsidian-brain"
+    assert "## 최근 작업" in post.content
+    assert "## 핵심 결정" in post.content
+
+
+def test_generate_project_doc_new_format(tmp_path):
+    path = generate_project_doc(
+        vault_path=tmp_path,
+        projects_folder="Projects",
+        project_name="wishket",
+        date="2026-04-09",
+        summary="Lead Scoring 리팩토링",
+        decisions=["가중치 균등 배분으로 변경"],
+    )
+    assert path.exists()
+    post = frontmatter.load(path)
+    assert post["title"] == "wishket"
+    assert post["status"] == "active"
+    assert "## 개요" in post.content
+    assert "## 핵심 결정" in post.content
+    assert "## 최근 작업" in post.content
+    assert "[[2026-04-09]]" in post.content
+    assert "가중치 균등 배분으로 변경" in post.content
 
 
 def test_generate_experience_doc_problem_solving(tmp_path):
@@ -222,3 +238,97 @@ def test_generate_experience_doc_discovery(tmp_path):
     assert "## 발견" in content
     assert "## 맥락" in content
     assert "## 상황" not in content  # no problem-solving sections
+
+
+def test_generate_daily_doc_new_file(tmp_path):
+    from obsidian_brain.generator import generate_daily_doc
+
+    daily_entries = [
+        {"project": "wishket", "bullets": ["Lead Scoring 리팩토링", "Celery 타임아웃 해결"]},
+        {"project": "daeun", "bullets": ["obsidian-brain 구조 전환"]},
+    ]
+    path = generate_daily_doc(
+        vault_path=tmp_path,
+        daily_folder="Daily",
+        date="2026-04-09",
+        daily_entries=daily_entries,
+        tags=["django", "celery"],
+    )
+    assert path.exists()
+    assert path.name == "2026-04-09.md"
+
+    post = frontmatter.load(path)
+    assert post["date"] == "2026-04-09"
+    assert "wishket" in post["projects"]
+    assert "daeun" in post["projects"]
+    assert "## [[wishket]]" in post.content
+    assert "Lead Scoring 리팩토링" in post.content
+    assert "## [[daeun]]" in post.content
+
+
+def test_generate_daily_doc_append_existing(tmp_path):
+    from obsidian_brain.generator import generate_daily_doc
+
+    # First session
+    generate_daily_doc(
+        vault_path=tmp_path,
+        daily_folder="Daily",
+        date="2026-04-09",
+        daily_entries=[{"project": "wishket", "bullets": ["Lead Scoring 리팩토링"]}],
+        tags=["django"],
+    )
+    # Second session — same project
+    path = generate_daily_doc(
+        vault_path=tmp_path,
+        daily_folder="Daily",
+        date="2026-04-09",
+        daily_entries=[{"project": "wishket", "bullets": ["Celery 타임아웃 해결"]}],
+        tags=["celery"],
+    )
+
+    post = frontmatter.load(path)
+    assert "django" in post["tags"]
+    assert "celery" in post["tags"]
+    assert post.content.count("## [[wishket]]") == 1
+    assert "Lead Scoring 리팩토링" in post.content
+    assert "Celery 타임아웃 해결" in post.content
+
+
+def test_generate_daily_doc_append_new_project(tmp_path):
+    from obsidian_brain.generator import generate_daily_doc
+
+    generate_daily_doc(
+        vault_path=tmp_path,
+        daily_folder="Daily",
+        date="2026-04-09",
+        daily_entries=[{"project": "wishket", "bullets": ["작업1"]}],
+        tags=[],
+    )
+    path = generate_daily_doc(
+        vault_path=tmp_path,
+        daily_folder="Daily",
+        date="2026-04-09",
+        daily_entries=[{"project": "daeun", "bullets": ["작업2"]}],
+        tags=[],
+    )
+
+    post = frontmatter.load(path)
+    assert "wishket" in post["projects"]
+    assert "daeun" in post["projects"]
+    assert "## [[wishket]]" in post.content
+    assert "## [[daeun]]" in post.content
+
+
+def test_generate_daily_doc_null_project(tmp_path):
+    from obsidian_brain.generator import generate_daily_doc
+
+    path = generate_daily_doc(
+        vault_path=tmp_path,
+        daily_folder="Daily",
+        date="2026-04-09",
+        daily_entries=[{"project": None, "bullets": ["잡다한 작업"]}],
+        tags=[],
+    )
+    post = frontmatter.load(path)
+    assert "## 기타" in post.content
+    assert "잡다한 작업" in post.content

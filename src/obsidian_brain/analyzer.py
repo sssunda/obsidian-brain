@@ -11,20 +11,17 @@ ANALYSIS_SCHEMA = {
         "title_slug": {"type": "string"},
         "tags": {"type": "array", "items": {"type": "string"}},
         "decisions": {"type": "array", "items": {"type": "string"}},
-        "reasoning_patterns": {
+        "daily_entries": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "situation": {"type": "string"},
-                    "choice": {"type": "string"},
-                    "why": {"type": "string"},
+                    "project": {"type": ["string", "null"]},
+                    "bullets": {"type": "array", "items": {"type": "string"}},
                 },
-                "required": ["situation", "choice", "why"],
+                "required": ["project", "bullets"],
             },
         },
-        "preferences": {"type": "array", "items": {"type": "string"}},
-        "projects": {"type": "array", "items": {"type": "string"}},
         "experiences": {
             "type": "array",
             "items": {
@@ -47,7 +44,7 @@ ANALYSIS_SCHEMA = {
     },
     "required": [
         "summary", "title_slug", "tags", "decisions",
-        "reasoning_patterns", "preferences", "projects", "experiences",
+        "daily_entries", "experiences",
     ],
 }
 
@@ -56,7 +53,13 @@ def build_json_schema() -> dict:
     return ANALYSIS_SCHEMA
 
 
-def build_prompt(parsed: dict, projects: list[str] | None = None, cwd: str | None = None) -> str:
+def build_prompt(
+    parsed: dict,
+    projects_config: dict | None = None,
+    cwd: str | None = None,
+    existing_experiences: list[str] | None = None,
+    about: str | None = None,
+) -> str:
     messages = truncate_messages(parsed["messages"])
     date = parsed["date"]
     transcript = "\n".join(
@@ -65,17 +68,42 @@ def build_prompt(parsed: dict, projects: list[str] | None = None, cwd: str | Non
     )
 
     context_lines = []
-    if projects:
-        context_lines.append(f"기존 프로젝트: {', '.join(projects)}")
+    if about:
+        context_lines.append(f"사용자: {about}")
     if cwd:
         dir_name = cwd.rstrip("/").split("/")[-1] if "/" in cwd else cwd
-        context_lines.append(f"작업 디렉토리: {cwd} (프로젝트 힌트: {dir_name})")
+        context_lines.append(f"작업 디렉토리: {cwd} (힌트: {dir_name})")
     context_section = "\n".join(context_lines)
+
+    # Project descriptions
+    project_section = ""
+    if projects_config:
+        lines = ["## 프로젝트 목록 (이 중에서만 선택)"]
+        for name, config in projects_config.items():
+            aliases = config.get("aliases", [])
+            desc = config.get("description", "")
+            alias_str = f" (aliases: {', '.join(aliases)})" if aliases else ""
+            lines.append(f"- **{name}**{alias_str}: {desc}")
+        lines.append("")
+        lines.append("위 목록에 없는 프로젝트명은 사용하지 마. 매칭 안 되면 project: null로.")
+        project_section = "\n".join(lines)
+
+    # Existing experiences
+    experience_section = ""
+    if existing_experiences:
+        lines = ["## 기존 경험 노트"]
+        for title in existing_experiences:
+            lines.append(f"- {title}")
+        lines.append("")
+        lines.append("위 목록과 같은 내용이면 experiences에 포함하지 마. 새롭게 배운 것만 추출해.")
+        experience_section = "\n".join(lines)
 
     return f"""다음 AI 대화를 분석해줘.
 
 날짜: {date}
 {context_section}
+
+{project_section}
 
 ## 분석 지침
 
@@ -83,9 +111,12 @@ def build_prompt(parsed: dict, projects: list[str] | None = None, cwd: str | Non
 2. title_slug: 영문 kebab-case 파일명 슬러그
 3. tags: 소문자 영문 태그
 4. decisions: 핵심 결정사항 목록
-5. reasoning_patterns: situation/choice/why 구조의 의사결정 패턴 (실제로 판단/선택이 있었을 때만)
-6. preferences: 드러난 행동 선호/원칙 (명시적 + 암시적)
-7. projects: 관련 프로젝트 이름. 기존 목록에 있으면 매칭, 없으면 새 이름 사용. 작업 디렉토리명이 힌트가 될 수 있지만, 대화 내용이 다른 프로젝트에 관한 것이면 그쪽으로 분류해
+5. daily_entries: 프로젝트별로 오늘 한 일을 bullet 정리
+   - project: 프로젝트명 (위 목록 중 하나, 또는 null)
+   - bullets: 각각 한 줄로 뭘 했는지. 하위 설명이 필요하면 " — " 으로 이어서
+   - 한 세션이 여러 프로젝트에 걸치면 각각 별도 entry로
+
+{experience_section}
 
 ## 경험 추출 (experiences)
 
@@ -128,6 +159,13 @@ def truncate_messages(messages: list[dict], max_chars: int = 50000, head_count: 
     return head + [separator] + tail
 
 
-def analyze(parsed: dict, projects: list[str] | None = None, cwd: str | None = None, model: str = "sonnet") -> dict:
-    prompt = build_prompt(parsed, projects=projects, cwd=cwd)
+def analyze(
+    parsed: dict,
+    projects_config: dict | None = None,
+    cwd: str | None = None,
+    existing_experiences: list[str] | None = None,
+    about: str | None = None,
+    model: str = "sonnet",
+) -> dict:
+    prompt = build_prompt(parsed, projects_config=projects_config, cwd=cwd, existing_experiences=existing_experiences, about=about)
     return call_claude(prompt, ANALYSIS_SCHEMA, model=model)

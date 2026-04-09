@@ -44,3 +44,11 @@ def rotate_processed(vault_path: Path, retention_days: int = 30) -> None:
                 pass
         kept.append(line)
     processed_file.write_text("\n".join(kept) + "\n" if kept else "")
+
+
+def scan_experiences(vault_path: Path, folder: str = "Experiences") -> list[str]:
+    """Return titles (filenames without .md) of all experience notes."""
+    exp_dir = vault_path / folder
+    if not exp_dir.exists():
+        return []
+    return [f.stem for f in exp_dir.glob("*.md")]

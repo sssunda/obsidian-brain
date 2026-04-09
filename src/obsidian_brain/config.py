@@ -15,10 +15,12 @@ DEFAULT_CONFIG = {
     "truncate_tail": 85,
     "model": "sonnet",
     "folders": {
-        "conversations": "Conversations",
+        "daily": "Daily",
         "experiences": "Experiences",
         "projects": "Projects",
     },
+    "about": "",
+    "projects": {},
 }
 
 

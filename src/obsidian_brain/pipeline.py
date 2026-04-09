@@ -3,23 +3,22 @@ from pathlib import Path
 
 from .analyzer import analyze
 from .config import load_config
-from .filter import is_similar_conversation, should_process
+from .filter import is_similar_experience, should_process
 from .generator import (
+    generate_daily_doc,
     generate_experience_doc,
-    generate_conversation_doc,
     generate_project_doc,
     update_project_doc,
 )
 from .parser import parse_transcript
-from .vault import load_processed_ids, save_processed_id, scan_projects
+from .project_mapper import resolve_project, resolve_projects
+from .vault import load_processed_ids, save_processed_id, scan_experiences
 
 logger = logging.getLogger(__name__)
 
 
 def _extract_cwd_from_path(transcript_path: Path) -> str | None:
     """Extract the original cwd from the encoded transcript directory name."""
-    # Transcript lives at ~/.claude/projects/{encoded-cwd}/{session}.jsonl
-    # encoded-cwd replaces / with -
     encoded = transcript_path.parent.name
     if encoded.startswith("-"):
         return encoded.replace("-", "/")
@@ -33,6 +32,7 @@ def process_session(
 ) -> Path | None:
     config = load_config(vault_path)
     min_msg = min_messages or config["min_messages"]
+    projects_config = config.get("projects", {})
 
     parsed = parse_transcript(transcript_path)
     logger.info(f"Parsed session {parsed['session_id']}: {len(parsed['messages'])} messages")
@@ -42,13 +42,18 @@ def process_session(
         logger.info(f"Skipping session {parsed['session_id']}")
         return None
 
-    projects = scan_projects(vault_path, config["folders"]["projects"])
     cwd = _extract_cwd_from_path(transcript_path)
+
+    # Gather existing experience titles for dedup
+    exp_folder = config["folders"].get("experiences", "Experiences")
+    existing_experiences = scan_experiences(vault_path, exp_folder)
 
     analysis = analyze(
         parsed,
-        projects=projects,
+        projects_config=projects_config,
         cwd=cwd,
+        existing_experiences=existing_experiences,
+        about=config.get("about"),
         model=config.get("model", "sonnet"),
     )
 
@@ -56,48 +61,52 @@ def process_session(
         logger.warning("Analysis returned empty for session %s", parsed["session_id"])
         return None
 
-    if is_similar_conversation(
-        summary=analysis["summary"],
-        vault_path=vault_path,
-        conv_folder=config["folders"]["conversations"],
-        date=parsed["date"],
-    ):
-        logger.info("Similar conversation exists, skipping %s", parsed["session_id"])
-        save_processed_id(vault_path, parsed["session_id"])
-        return None
+    # Post-process: resolve project names in daily_entries
+    for entry in analysis.get("daily_entries", []):
+        if entry.get("project"):
+            entry["project"] = resolve_project(entry["project"], projects_config)
 
-    conv_path = generate_conversation_doc(
+    # Collect resolved project names
+    resolved_projects = []
+    for entry in analysis.get("daily_entries", []):
+        if entry["project"] and entry["project"] not in resolved_projects:
+            resolved_projects.append(entry["project"])
+
+    # Generate daily note
+    daily_path = generate_daily_doc(
         vault_path=vault_path,
-        conv_folder=config["folders"]["conversations"],
+        daily_folder=config["folders"].get("daily", "Daily"),
         date=parsed["date"],
-        session_id=parsed["session_id"],
-        analysis=analysis,
+        daily_entries=analysis.get("daily_entries", []),
+        tags=analysis.get("tags", []),
     )
-    conversation_slug = conv_path.stem
-    logger.info(f"Created conversation: {conv_path}")
+    logger.info(f"Created/updated daily note: {daily_path}")
 
-    # Generate experience notes
+    # Generate experience notes (skip duplicates)
     for exp in analysis.get("experiences", []):
+        title = exp.get("title", "unknown")
         try:
+            if is_similar_experience(title, vault_path, exp_folder):
+                logger.info("Skipping duplicate experience: %s", title)
+                continue
             generate_experience_doc(
                 experience=exp,
-                conversation_slug=conversation_slug,
+                conversation_slug=daily_path.stem,
                 date=parsed["date"],
-                projects=analysis.get("projects", []),
+                projects=resolved_projects,
                 vault_path=vault_path,
-                exp_folder=config["folders"].get("experiences", "Experiences"),
+                exp_folder=exp_folder,
             )
-            logger.info("Created experience: %s", exp.get("title", "unknown"))
+            logger.info("Created experience: %s", title)
         except Exception:
-            logger.warning("Failed to generate experience note: %s", exp.get("title", "unknown"))
+            logger.warning("Failed to generate experience note: %s", title)
 
-    # Generate/update project docs (unchanged from current code)
-    for project_name in analysis.get("projects", []):
+    # Update project docs
+    for project_name in resolved_projects:
         project_path = vault_path / config["folders"]["projects"] / f"{project_name}.md"
         if project_path.exists():
             update_project_doc(
                 doc_path=project_path,
-                conversation_slug=conversation_slug,
                 date=parsed["date"],
                 summary=analysis["summary"],
                 decisions=analysis.get("decisions"),
@@ -109,7 +118,6 @@ def process_session(
                 projects_folder=config["folders"]["projects"],
                 project_name=project_name,
                 date=parsed["date"],
-                conversation_slug=conversation_slug,
                 summary=analysis["summary"],
                 decisions=analysis.get("decisions"),
             )
@@ -118,4 +126,4 @@ def process_session(
     save_processed_id(vault_path, parsed["session_id"])
     logger.info(f"Session {parsed['session_id']} processed successfully")
 
-    return conv_path
+    return daily_path

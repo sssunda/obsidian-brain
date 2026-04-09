@@ -1,52 +1,100 @@
 import json
-from obsidian_brain.analyzer import build_prompt, build_json_schema, truncate_messages
+from obsidian_brain.analyzer import build_prompt, build_json_schema, truncate_messages, ANALYSIS_SCHEMA
 
 
-def test_analysis_schema_has_experiences():
-    from obsidian_brain.analyzer import ANALYSIS_SCHEMA
+def test_schema_has_daily_entries():
+    props = ANALYSIS_SCHEMA["properties"]
+    assert "daily_entries" in props
+    entry_props = props["daily_entries"]["items"]["properties"]
+    assert "project" in entry_props
+    assert "bullets" in entry_props
+
+
+def test_schema_still_has_experiences():
     props = ANALYSIS_SCHEMA["properties"]
     assert "experiences" in props
-    assert "concepts" not in props
-
     exp_items = props["experiences"]["items"]["properties"]
     assert "title" in exp_items
     assert "experience_type" in exp_items
     assert "sections" in exp_items
 
-    # experience_type must be enum
-    assert set(exp_items["experience_type"]["enum"]) == {
-        "problem-solving", "discovery", "troubleshooting"
-    }
+
+def test_schema_required_fields():
+    required = ANALYSIS_SCHEMA["required"]
+    assert "summary" in required
+    assert "daily_entries" in required
+    assert "experiences" in required
+    assert "decisions" in required
+    assert "tags" in required
 
 
-def test_build_prompt_contains_experience_instructions():
-    from obsidian_brain.analyzer import build_prompt
-
+def test_prompt_includes_project_descriptions():
     parsed = {
-        "messages": [
-            {"role": "user", "content": "test message"}
-        ],
-        "date": "2026-04-01",
+        "messages": [{"role": "user", "content": "test"}],
+        "date": "2026-04-09",
     }
-    prompt = build_prompt(parsed, projects=["wishos"])
-    assert "경험" in prompt or "experience" in prompt.lower()
-    assert "개념" not in prompt  # no concept instructions
-    assert "problem-solving" in prompt
-    assert "discovery" in prompt
-    assert "troubleshooting" in prompt
+    projects_config = {
+        "wishket": {"aliases": ["backend"], "description": "위시켓 플랫폼"},
+        "daeun": {"aliases": ["obsidian-brain"], "description": "개인 프로젝트"},
+    }
+    prompt = build_prompt(parsed, projects_config=projects_config)
+    assert "wishket" in prompt
+    assert "위시켓 플랫폼" in prompt
+    assert "backend" in prompt
+    assert "daeun" in prompt
 
 
-def test_build_prompt_includes_projects():
+def test_prompt_includes_existing_experiences():
     parsed = {
-        "messages": [
-            {"role": "user", "content": "Docker 네트워킹 알려줘"},
-            {"role": "assistant", "content": "Bridge 네트워크는..."},
-        ],
-        "date": "2026-04-01",
+        "messages": [{"role": "user", "content": "test"}],
+        "date": "2026-04-09",
     }
-    prompt = build_prompt(parsed, projects=["pomodoro-todo"])
-    assert "pomodoro-todo" in prompt
-    assert "Docker 네트워킹 알려줘" in prompt
+    existing_experiences = [
+        "Django QuerySet 평가 시점 함정",
+        "UUID PK 전환이 전체 스택을 깨뜨림",
+    ]
+    prompt = build_prompt(parsed, existing_experiences=existing_experiences)
+    assert "Django QuerySet 평가 시점 함정" in prompt
+    assert "UUID PK 전환이 전체 스택을 깨뜨림" in prompt
+
+
+def test_prompt_no_experiences_section_when_empty():
+    parsed = {
+        "messages": [{"role": "user", "content": "test"}],
+        "date": "2026-04-09",
+    }
+    prompt = build_prompt(parsed, existing_experiences=[])
+    assert "기존 경험 노트:" not in prompt
+
+
+def test_prompt_daily_entries_instructions():
+    parsed = {
+        "messages": [{"role": "user", "content": "test"}],
+        "date": "2026-04-09",
+    }
+    projects_config = {
+        "wishket": {"aliases": [], "description": "위시켓"},
+    }
+    prompt = build_prompt(parsed, projects_config=projects_config)
+    assert "daily_entries" in prompt
+
+
+def test_prompt_includes_about():
+    parsed = {
+        "messages": [{"role": "user", "content": "test"}],
+        "date": "2026-04-09",
+    }
+    prompt = build_prompt(parsed, about="백엔드 개발자, Django 주력")
+    assert "백엔드 개발자" in prompt
+
+
+def test_prompt_no_about_when_empty():
+    parsed = {
+        "messages": [{"role": "user", "content": "test"}],
+        "date": "2026-04-09",
+    }
+    prompt = build_prompt(parsed, about="")
+    assert "사용자:" not in prompt
 
 
 def test_truncate_messages_short_conversation():
@@ -61,12 +109,3 @@ def test_truncate_messages_long_conversation():
     assert len(result) == 101  # 15 head + 1 separator + 85 tail
     assert result[15]["role"] == "system"
     assert "[... 중간" in result[15]["content"]
-
-
-def test_json_schema_is_valid():
-    schema = build_json_schema()
-    parsed = json.loads(schema) if isinstance(schema, str) else schema
-    assert "properties" in parsed
-    assert "summary" in parsed["properties"]
-    assert "experiences" in parsed["properties"]
-    assert "tags" in parsed["properties"]

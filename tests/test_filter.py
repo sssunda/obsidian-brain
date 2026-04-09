@@ -1,4 +1,4 @@
-from obsidian_brain.filter import should_process
+from obsidian_brain.filter import should_process, is_similar_experience
 
 
 def _make_parsed(session_id, user_msgs):
@@ -39,6 +39,56 @@ def test_skip_exactly_three_user_messages():
 
 
 def test_skip_short_messages():
-    """Sessions with very short user messages (avg < 20 chars) should be skipped."""
     parsed = _make_parsed("abc", ["ㅇ", "ㅎ", "ㅇㅇ", "ㄴㄴ", "ㅋ"])
     assert should_process(parsed, processed_ids=set(), min_messages=3) is False
+
+
+def test_experience_dedup_exact_match(tmp_path):
+    exp_dir = tmp_path / "Experiences"
+    exp_dir.mkdir()
+    (exp_dir / "schema 서브모듈 커밋 누락으로 Django 부팅 불가.md").write_text("# test")
+    assert is_similar_experience(
+        "schema 서브모듈 커밋 누락으로 Django 부팅 불가",
+        tmp_path, "Experiences",
+    ) is True
+
+
+def test_experience_dedup_similar_title(tmp_path):
+    exp_dir = tmp_path / "Experiences"
+    exp_dir.mkdir()
+    (exp_dir / "schema 서브모듈 커밋 누락으로 Django 부팅 불가.md").write_text("# test")
+    assert is_similar_experience(
+        "schema 서브모듈 커밋 누락으로 Django ModuleNotFoundError",
+        tmp_path, "Experiences",
+    ) is True
+
+
+def test_experience_dedup_different_topic(tmp_path):
+    exp_dir = tmp_path / "Experiences"
+    exp_dir.mkdir()
+    (exp_dir / "schema 서브모듈 커밋 누락으로 Django 부팅 불가.md").write_text("# test")
+    assert is_similar_experience(
+        "Celery 태스크 내 in-memory 캐시 vs Redis",
+        tmp_path, "Experiences",
+    ) is False
+
+
+def test_experience_dedup_empty_dir(tmp_path):
+    exp_dir = tmp_path / "Experiences"
+    exp_dir.mkdir()
+    assert is_similar_experience("아무 제목", tmp_path, "Experiences") is False
+
+
+def test_experience_dedup_no_dir(tmp_path):
+    assert is_similar_experience("아무 제목", tmp_path, "Experiences") is False
+
+
+def test_experience_dedup_threshold_06(tmp_path):
+    """With threshold 0.6, moderately similar titles should NOT match."""
+    exp_dir = tmp_path / "Experiences"
+    exp_dir.mkdir()
+    (exp_dir / "Django QuerySet 평가 시점 함정.md").write_text("# test")
+    assert is_similar_experience(
+        "Django ORM 성능 최적화 팁",
+        tmp_path, "Experiences",
+    ) is False
