@@ -17,13 +17,39 @@
 | prd-manage | — | PRD 관리 도구 |
 | daeun | obsidian-brain, matjip-scout, pomodoro-todo, practice, daeunBot | 개인/사이드 프로젝트 |
 
-매칭 안 되는 세션은 프로젝트 없이 Daily에만 기록.
+매칭 안 되는 세션은 프로젝트 없이 Daily에만 기록 (`## 기타`).
+
+## Analyzer 스키마 변경
+
+기존 `summary` + `projects` → 프로젝트별 분리된 출력 추가.
+
+```json
+{
+  "summary": "전체 요약 (1-3문장)",
+  "daily_entries": [
+    {
+      "project": "wishket",
+      "bullets": [
+        "Lead Scoring v3 점수 기준 리팩토링 — 기존 가중치가 deal size를 과대평가해서 균등 배분으로 변경",
+        "Celery 태스크 타임아웃 해결 — retry 3회 후 dead letter queue로 전환"
+      ]
+    }
+  ],
+  "experiences": [],
+  "decisions": [],
+  "tags": []
+}
+```
+
+`daily_entries`는 프로젝트별로 그날 뭘 했는지 bullet 단위로 정리.
+한 세션이 여러 프로젝트에 걸치면 각각 별도 entry.
+프로젝트 매칭 안 되면 `"project": null`.
 
 ## 출력 구조
 
 ### 1. Daily Note
 
-**경로:** `Daily/2026-04-09.md`
+**경로:** `Daily/{date}.md` (예: `Daily/2026-04-09.md`)
 
 같은 날 여러 세션 → 하나의 파일에 append. 이미 있는 프로젝트 섹션에 추가.
 
@@ -45,10 +71,15 @@ tags: [django, celery, dedup]
   - Conversations + Experiences 폴더 대체
 ```
 
-규칙:
-- 프로젝트 매칭 안 된 세션 → `## 기타`
-- 한 세션이 여러 프로젝트에 걸치면 각 섹션에 분배
-- Conversations 폴더 대체
+**Append 로직:**
+1. `Daily/{date}.md` 존재 확인
+2. 없으면 → frontmatter + 새 내용으로 생성
+3. 있으면:
+   - frontmatter 로드 → `projects`, `tags` 리스트 merge (중복 제거)
+   - 각 daily_entry에 대해:
+     - 해당 `## [[project]]` 섹션이 이미 있으면 → 섹션 끝에 bullet 추가
+     - 없으면 → 파일 끝에 새 섹션 추가
+   - project가 null인 entry → `## 기타` 섹션에 추가
 
 ### 2. Projects
 
@@ -77,41 +108,50 @@ updated: 2026-04-09
 - [[2026-04-08]] WAF 룰 업데이트
 ```
 
-업데이트 방식:
-- 세션 처리 시 해당 프로젝트 문서를 읽어서 LLM에 넘김
-- "핵심 결정", "최근 작업"에 새 내용 추가
-- "아키텍처"는 변경사항 있을 때만 업데이트
+**업데이트 방식 (LLM 호출 없이 코드로):**
+- "최근 작업"에 `[[{date}]] {summary}` append
+- "핵심 결정"에 `{date}: {decision}` append (중복 체크)
+- "개요", "아키텍처"는 수동 관리 (자동 수정 안 함)
+- `updated` frontmatter 갱신
+
+**초기 생성:** 첫 실행 시 프로젝트 문서가 없으면 기본 템플릿으로 자동 생성.
 
 ### 3. Experiences
 
 구조 유지, 중복 방지 강화.
 
 변경:
-- analyzer 프롬프트에 기존 경험 제목 목록 전달
+- analyzer 프롬프트에 **기존 경험 제목 목록 전체** 전달 (~148개 * 30자 ≈ 4400자, 부담 없음)
 - "이미 있는 경험과 같은 내용이면 만들지 마" 명시
 - 코드 검증: `is_similar_experience` threshold 0.5 → 0.6
 
 ## 프로젝트 분류 로직 (접근법 B)
 
 ### 프롬프트 강화
-- 4개 프로젝트 + 설명 + aliases를 analyzer 프롬프트에 전달
-- "이 중에서만 골라, 안 맞으면 빈 배열" 지시
+- 4개 프로젝트 + 설명 + aliases를 config에서 읽어서 analyzer 프롬프트에 전달
+- "이 중에서만 골라, 안 맞으면 null" 지시
 
 ### 코드 검증 (분석 결과 후처리)
 1. 정확히 일치 → 통과
 2. aliases에 있음 → 매핑 (예: "backend" → "wishket")
-3. 둘 다 아님 → fuzzy match 시도 (difflib), 안 되면 제외
+3. 둘 다 아님 → fuzzy match 시도 (difflib), 0.7 이상이면 매핑
+4. 전부 아님 → null (프로젝트 없음, `## 기타`로)
 
 ## 변경 대상 파일
 
 | 파일 | 변경 내용 |
 |------|----------|
 | `config.py` | projects를 aliases/description 포함 dict로 변경, daily 폴더 추가 |
-| `analyzer.py` | 프롬프트에 프로젝트 설명 + 기존 경험 목록 추가 |
-| `pipeline.py` | Daily note append 로직, 프로젝트 후처리 매핑, 경험 목록 전달 |
-| `generator.py` | Daily note 생성/append, Projects 누적 업데이트 |
-| `filter.py` | experience threshold 조정 |
-| `vault.py` | scan_experiences() 추가, Daily 폴더 스캔 |
+| `analyzer.py` | 스키마에 `daily_entries` 추가, 프롬프트에 프로젝트 설명 + 경험 목록 |
+| `pipeline.py` | Daily note 생성/append, 프로젝트 후처리 매핑, 경험 목록 전달 |
+| `generator.py` | `generate_daily_doc()` 신규, `append_daily_doc()` 신규, `generate_project_doc()` 템플릿 변경, `update_project_doc()` 새 포맷 |
+| `filter.py` | experience threshold 0.5 → 0.6 |
+| `vault.py` | `scan_experiences()` 추가 |
+
+## 삭제 대상
+
+- `generate_conversation_doc()` — Daily가 대체
+- `is_similar_conversation()` — Daily는 날짜별 1개라 중복 체크 불필요
 
 ## 기존 데이터 처리
 
