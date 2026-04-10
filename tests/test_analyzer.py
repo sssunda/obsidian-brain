@@ -34,14 +34,14 @@ def test_prompt_includes_project_descriptions():
         "date": "2026-04-09",
     }
     projects_config = {
-        "wishket": {"aliases": ["backend"], "description": "위시켓 플랫폼"},
-        "daeun": {"aliases": ["obsidian-brain"], "description": "개인 프로젝트"},
+        "project-a": {"aliases": ["backend"], "description": "example platform"},
+        "personal": {"aliases": ["obsidian-brain"], "description": "personal projects"},
     }
     prompt = build_prompt(parsed, projects_config=projects_config)
-    assert "wishket" in prompt
-    assert "위시켓 플랫폼" in prompt
+    assert "project-a" in prompt
+    assert "example platform" in prompt
     assert "backend" in prompt
-    assert "daeun" in prompt
+    assert "personal" in prompt
 
 
 def test_prompt_includes_existing_experiences():
@@ -73,7 +73,7 @@ def test_prompt_daily_entries_instructions():
         "date": "2026-04-09",
     }
     projects_config = {
-        "wishket": {"aliases": [], "description": "위시켓"},
+        "project-a": {"aliases": [], "description": "project-a"},
     }
     prompt = build_prompt(parsed, projects_config=projects_config)
     assert "daily_entries" in prompt

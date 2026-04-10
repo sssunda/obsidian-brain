@@ -16,7 +16,7 @@ def resolve_project(name: str, projects_config: dict, threshold: float = 0.7) ->
             if name_lower == alias.lower():
                 return project_name
 
-    # Substring match — "wishket-backend" contains "wishket"
+    # Substring match — "project-a-backend" contains "project-a"
     for project_name, config in projects_config.items():
         candidates = [project_name] + config.get("aliases", [])
         for candidate in candidates:

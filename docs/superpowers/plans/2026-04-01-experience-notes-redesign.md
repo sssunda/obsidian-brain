@@ -40,7 +40,7 @@ def test_analysis_schema_has_experiences():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_analyzer.py::test_analysis_schema_has_experiences -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_analyzer.py::test_analysis_schema_has_experiences -v`
 Expected: FAIL — `KeyError: 'experiences'`
 
 - [ ] **Step 3: Replace ANALYSIS_SCHEMA concepts with experiences**
@@ -120,7 +120,7 @@ def test_build_prompt_contains_experience_instructions():
         ],
         "date": "2026-04-01",
     }
-    prompt = build_prompt(parsed, projects=["wishos"])
+    prompt = build_prompt(parsed, projects=["project-b"])
     assert "경험" in prompt or "experience" in prompt.lower()
     assert "개념" not in prompt  # no concept instructions
     assert "problem-solving" in prompt
@@ -247,7 +247,7 @@ def test_generate_experience_doc_problem_solving(tmp_path):
     }
     conversation_slug = "2026-03-30-django-admin-logentry"
     date = "2026-03-30"
-    projects = ["wishos"]
+    projects = ["project-b"]
 
     doc_path = generate_experience_doc(
         experience=experience,

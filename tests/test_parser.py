@@ -31,11 +31,11 @@ def test_parse_transcript_metadata():
 
 
 def test_encode_cwd():
-    assert encode_cwd("/Users/daeun/sssunda") == "-Users-daeun-sssunda"
+    assert encode_cwd("/path/to/work") == "-path-to-work"
     assert encode_cwd("/") == "-"
 
 
 def test_build_transcript_path():
-    path = build_transcript_path("abc123", "/Users/daeun/sssunda")
-    expected = Path.home() / ".claude" / "projects" / "-Users-daeun-sssunda" / "abc123.jsonl"
+    path = build_transcript_path("abc123", "/path/to/work")
+    expected = Path.home() / ".claude" / "projects" / "-path-to-work" / "abc123.jsonl"
     assert path == expected

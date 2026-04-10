@@ -3,62 +3,62 @@ from obsidian_brain.project_mapper import resolve_project
 
 def test_exact_match():
     projects = {
-        "wishket": {"aliases": ["backend"], "description": ""},
+        "project-a": {"aliases": ["backend"], "description": ""},
     }
-    assert resolve_project("wishket", projects) == "wishket"
+    assert resolve_project("project-a", projects) == "project-a"
 
 
 def test_alias_match():
     projects = {
-        "wishket": {"aliases": ["backend", "schema"], "description": ""},
+        "project-a": {"aliases": ["backend", "schema"], "description": ""},
     }
-    assert resolve_project("backend", projects) == "wishket"
-    assert resolve_project("schema", projects) == "wishket"
+    assert resolve_project("backend", projects) == "project-a"
+    assert resolve_project("schema", projects) == "project-a"
 
 
 def test_fuzzy_match():
     projects = {
-        "wishket": {"aliases": ["backend"], "description": ""},
+        "project-a": {"aliases": ["backend"], "description": ""},
     }
-    assert resolve_project("wishket-backend", projects) == "wishket"
+    assert resolve_project("project-a-backend", projects) == "project-a"
 
 
 def test_no_match_returns_none():
     projects = {
-        "wishket": {"aliases": ["backend"], "description": ""},
+        "project-a": {"aliases": ["backend"], "description": ""},
     }
     assert resolve_project("random-thing", projects) is None
 
 
 def test_case_insensitive():
     projects = {
-        "wishket": {"aliases": ["Backend"], "description": ""},
+        "project-a": {"aliases": ["Backend"], "description": ""},
     }
-    assert resolve_project("BACKEND", projects) == "wishket"
+    assert resolve_project("BACKEND", projects) == "project-a"
 
 
-def test_daeun_catches_personal_projects():
+def test_personal_catches_aliases():
     projects = {
-        "daeun": {"aliases": ["obsidian-brain", "matjip-scout", "pomodoro-todo"], "description": ""},
+        "personal": {"aliases": ["obsidian-brain", "eta-scout", "theta-todo"], "description": ""},
     }
-    assert resolve_project("obsidian-brain", projects) == "daeun"
-    assert resolve_project("matjip-scout", projects) == "daeun"
+    assert resolve_project("obsidian-brain", projects) == "personal"
+    assert resolve_project("eta-scout", projects) == "personal"
 
 
 def test_resolve_list():
     from obsidian_brain.project_mapper import resolve_projects
     projects_config = {
-        "wishket": {"aliases": ["backend"], "description": ""},
-        "daeun": {"aliases": ["obsidian-brain"], "description": ""},
+        "project-a": {"aliases": ["backend"], "description": ""},
+        "personal": {"aliases": ["obsidian-brain"], "description": ""},
     }
     result = resolve_projects(["backend", "obsidian-brain", "unknown"], projects_config)
-    assert result == ["wishket", "daeun"]
+    assert result == ["project-a", "personal"]
 
 
 def test_resolve_list_deduplicates():
     from obsidian_brain.project_mapper import resolve_projects
     projects_config = {
-        "wishket": {"aliases": ["backend", "schema"], "description": ""},
+        "project-a": {"aliases": ["backend", "schema"], "description": ""},
     }
-    result = resolve_projects(["backend", "schema", "wishket"], projects_config)
-    assert result == ["wishket"]
+    result = resolve_projects(["backend", "schema", "project-a"], projects_config)
+    assert result == ["project-a"]

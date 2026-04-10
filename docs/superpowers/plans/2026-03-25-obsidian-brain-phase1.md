@@ -48,7 +48,7 @@ obsidian-brain/
 │           ├── Concepts/
 │           │   └── Docker.md
 │           └── Projects/
-│               └── pomodoro-todo.md
+│               └── theta-todo.md
 └── docs/
     └── superpowers/
         ├── specs/
@@ -128,12 +128,12 @@ if __name__ == "__main__":
 
 - [ ] **Step 5: Install dependencies and verify**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv sync --dev`
+Run: `cd /path/to/obsidian-brain && uv sync --dev`
 Expected: Dependencies installed successfully
 
 - [ ] **Step 6: Verify module runs**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run python -m obsidian_brain`
+Run: `cd /path/to/obsidian-brain && uv run python -m obsidian_brain`
 Expected: "obsidian-brain: not yet implemented"
 
 - [ ] **Step 7: Commit**
@@ -201,7 +201,7 @@ def test_load_config_vault_path_resolution(tmp_path):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_config.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_config.py -v`
 Expected: FAIL (module not found)
 
 - [ ] **Step 3: Write implementation**
@@ -261,7 +261,7 @@ def _deep_merge(base: dict, override: dict) -> None:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_config.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_config.py -v`
 Expected: 3 passed
 
 - [ ] **Step 5: Commit**
@@ -308,7 +308,7 @@ def test_acquire_blocks_second_caller(tmp_path):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_lockfile.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_lockfile.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: Write implementation**
@@ -350,7 +350,7 @@ def release_lock(fd, lock_path: Path) -> None:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_lockfile.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_lockfile.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: Commit**
@@ -453,7 +453,7 @@ with open(fixture_path, "w") as f:
 print(f"Created {fixture_path}")
 ```
 
-Run once: `cd /Users/daeun/sssunda/obsidian-brain && uv run python tests/fixtures/create_fixture.py`
+Run once: `cd /path/to/obsidian-brain && uv run python tests/fixtures/create_fixture.py`
 Then delete `create_fixture.py`.
 
 - [ ] **Step 2: Write the failing tests**
@@ -499,7 +499,7 @@ def test_parse_transcript_metadata():
 
 def test_encode_cwd():
     """CWD encoding replaces / with - and adds leading -."""
-    assert encode_cwd("/Users/daeun/sssunda") == "-Users-daeun-sssunda"
+    assert encode_cwd("/path/to/work") == "-path-to-work"
     assert encode_cwd("/") == "-"
 
 
@@ -507,20 +507,20 @@ def test_encode_cwd_preserves_hyphens():
     """Literal hyphens in path components are double-encoded."""
     # Note: In practice, Claude Code uses its own encoding.
     # We match the observed pattern from ~/.claude/projects/
-    encoded = encode_cwd("/Users/daeun/my-project")
+    encoded = encode_cwd("/Users/me/my-project")
     assert "my" in encoded and "project" in encoded
 
 
 def test_build_transcript_path():
     """Build correct transcript path from session_id and cwd."""
-    path = build_transcript_path("abc123", "/Users/daeun/sssunda")
-    expected = Path.home() / ".claude" / "projects" / "-Users-daeun-sssunda" / "abc123.jsonl"
+    path = build_transcript_path("abc123", "/path/to/work")
+    expected = Path.home() / ".claude" / "projects" / "-path-to-work" / "abc123.jsonl"
     assert path == expected
 ```
 
 - [ ] **Step 3: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_parser.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_parser.py -v`
 Expected: FAIL
 
 - [ ] **Step 4: Write implementation**
@@ -587,7 +587,7 @@ def build_transcript_path(session_id: str, cwd: str) -> Path:
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_parser.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_parser.py -v`
 Expected: 6 passed
 
 - [ ] **Step 6: Commit**
@@ -681,7 +681,7 @@ def test_skip_exactly_three_user_messages():
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_filter.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_filter.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: Write implementation**
@@ -702,7 +702,7 @@ def should_process(parsed: dict, processed_ids: set[str], min_messages: int = 3)
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_filter.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_filter.py -v`
 Expected: 4 passed
 
 - [ ] **Step 5: Commit**
@@ -762,19 +762,19 @@ conversations: [2026-03-20-docker-basics]
 - [[컨테이너]]
 ```
 
-Create `tests/fixtures/sample_vault/Projects/pomodoro-todo.md`:
+Create `tests/fixtures/sample_vault/Projects/theta-todo.md`:
 ```markdown
 ---
 type: project
 created: 2026-03-19
 updated: 2026-03-19
 status: active
-conversations: [2026-03-19-pomodoro-setup]
+conversations: [2026-03-19-theta-setup]
 ---
 
-# pomodoro-todo
+# theta-todo
 
-뽀모도로 타이머 + 할 일 관리 앱.
+Example project description.
 ```
 
 - [ ] **Step 2: Write the failing tests**
@@ -796,7 +796,7 @@ def test_scan_concepts():
 def test_scan_projects():
     """Scan project names from Projects/ folder."""
     projects = scan_projects(SAMPLE_VAULT, "Projects")
-    assert "pomodoro-todo" in projects
+    assert "theta-todo" in projects
 
 
 def test_load_processed_ids():
@@ -825,7 +825,7 @@ def test_save_processed_id(tmp_path):
 
 - [ ] **Step 3: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_vault.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_vault.py -v`
 Expected: FAIL
 
 - [ ] **Step 4: Write implementation**
@@ -897,7 +897,7 @@ def rotate_processed(vault_path: Path, retention_days: int = 30) -> None:
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_vault.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_vault.py -v`
 Expected: 5 passed
 
 - [ ] **Step 6: Commit**
@@ -931,10 +931,10 @@ def test_build_prompt_includes_concepts_and_projects():
             {"role": "assistant", "content": "Bridge 네트워크는..."},
         ]
     }
-    prompt = build_prompt(parsed, concepts=["Docker", "React"], projects=["pomodoro-todo"])
+    prompt = build_prompt(parsed, concepts=["Docker", "React"], projects=["theta-todo"])
     assert "Docker" in prompt
     assert "React" in prompt
-    assert "pomodoro-todo" in prompt
+    assert "theta-todo" in prompt
     assert "Docker 네트워킹 알려줘" in prompt
 
 
@@ -974,7 +974,7 @@ def test_json_schema_is_valid():
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_analyzer.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_analyzer.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: Write implementation**
@@ -1119,7 +1119,7 @@ def analyze(parsed: dict, concepts: list[str], projects: list[str], max_retries:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_analyzer.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_analyzer.py -v`
 Expected: 5 passed (only unit tests — `analyze()` is not tested here as it calls `claude -p`)
 
 - [ ] **Step 5: Commit**
@@ -1303,7 +1303,7 @@ def test_generate_project_doc(tmp_path):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_generator.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_generator.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: Write implementation**
@@ -1526,7 +1526,7 @@ def update_project_doc(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_generator.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_generator.py -v`
 Expected: 5 passed
 
 - [ ] **Step 5: Commit**
@@ -1608,7 +1608,7 @@ def test_process_session_skips_already_processed(tmp_path):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_pipeline.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_pipeline.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: Write implementation**
@@ -1751,7 +1751,7 @@ def process_session(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_pipeline.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_pipeline.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: Commit**
@@ -1821,7 +1821,7 @@ def test_find_unprocessed_ignores_old_sessions(tmp_path):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_recovery.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_recovery.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: Write implementation**
@@ -1870,7 +1870,7 @@ def find_unprocessed_sessions(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_recovery.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_recovery.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: Commit**
@@ -1917,7 +1917,7 @@ def test_cli_process_missing_args():
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_cli.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_cli.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: Write implementation**
@@ -2069,7 +2069,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_cli.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_cli.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: Commit**
@@ -2186,7 +2186,7 @@ conversations: []
 
 - [ ] **Step 2: Run test**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest tests/test_integration.py -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest tests/test_integration.py -v`
 Expected: 1 passed
 
 - [ ] **Step 3: Commit**
@@ -2285,7 +2285,7 @@ Run: `chmod +x scripts/install-hooks.sh`
 
 - [ ] **Step 3: Run all tests to verify nothing broke**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && uv run pytest -v`
+Run: `cd /path/to/obsidian-brain && uv run pytest -v`
 Expected: All tests pass
 
 - [ ] **Step 4: Commit**
@@ -2303,7 +2303,7 @@ This task verifies the full system works with a real Claude Code session.
 
 - [ ] **Step 1: Run install script**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && bash scripts/install-hooks.sh`
+Run: `cd /path/to/obsidian-brain && bash scripts/install-hooks.sh`
 Enter vault path when prompted.
 
 - [ ] **Step 2: Add hooks to Claude Code settings**

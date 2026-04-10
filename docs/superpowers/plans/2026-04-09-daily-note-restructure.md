@@ -27,14 +27,14 @@ def test_default_config_has_projects():
     """Default config includes fixed project definitions."""
     assert "projects" in DEFAULT_CONFIG
     projects = DEFAULT_CONFIG["projects"]
-    assert "wishket" in projects
-    assert "wishos" in projects
-    assert "prd-manage" in projects
-    assert "daeun" in projects
+    assert "project-a" in projects
+    assert "project-b" in projects
+    assert "project-c" in projects
+    assert "personal" in projects
     # Each project has aliases and description
-    assert "aliases" in projects["wishket"]
-    assert "description" in projects["wishket"]
-    assert "backend" in projects["wishket"]["aliases"]
+    assert "aliases" in projects["project-a"]
+    assert "description" in projects["project-a"]
+    assert "backend" in projects["project-a"]["aliases"]
 
 
 def test_default_config_has_daily_folder():
@@ -52,7 +52,7 @@ def test_config_project_aliases_no_overlap():
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_config.py::test_default_config_has_projects tests/test_config.py::test_default_config_has_daily_folder tests/test_config.py::test_config_project_aliases_no_overlap -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_config.py::test_default_config_has_projects tests/test_config.py::test_default_config_has_daily_folder tests/test_config.py::test_config_project_aliases_no_overlap -v`
 Expected: FAIL — `projects` key not in DEFAULT_CONFIG
 
 - [ ] **Step 3: Implement config changes**
@@ -78,20 +78,20 @@ DEFAULT_CONFIG = {
         "projects": "Projects",
     },
     "projects": {
-        "wishket": {
-            "aliases": ["backend", "schema", "yozmit", "manage", "script", "slock", "prdesign", "mapletech"],
-            "description": "위시켓 플랫폼 — Django 백엔드, 인프라, 비즈니스 기능",
+        "project-a": {
+            "aliases": ["backend", "schema", "delta-svc", "manage", "script", "epsilon-svc", "zeta-svc", "gamma"],
+            "description": "example platform — backend, infra, business features",
         },
-        "wishos": {
-            "aliases": ["wishos-agent"],
-            "description": "WishOS AI 에이전트 시스템 — 멀티에이전트 파이프라인",
+        "project-b": {
+            "aliases": ["project-b-agent"],
+            "description": "multi-agent pipeline",
         },
-        "prd-manage": {
+        "project-c": {
             "aliases": [],
-            "description": "PRD 관리 도구",
+            "description": "spec management tool",
         },
-        "daeun": {
-            "aliases": ["obsidian-brain", "matjip-scout", "pomodoro-todo", "practice", "daeunBot"],
+        "personal": {
+            "aliases": ["obsidian-brain", "eta-scout", "theta-todo", "practice", "my-bot"],
             "description": "개인 사이드 프로젝트 및 기타",
         },
     },
@@ -102,7 +102,7 @@ Note: remove `"conversations"` from `folders` — no longer used.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_config.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_config.py -v`
 Expected: ALL PASS (update `test_load_config_defaults` to remove `conversations` assertion, add `daily` assertion)
 
 Update `test_load_config_defaults`:
@@ -115,7 +115,7 @@ def test_load_config_defaults(tmp_path):
     assert config["folders"]["experiences"] == "Experiences"
     assert config["folders"]["projects"] == "Projects"
     assert "conversations" not in config["folders"]
-    assert "wishket" in config["projects"]
+    assert "project-a" in config["projects"]
 ```
 
 - [ ] **Step 5: Commit**
@@ -142,70 +142,70 @@ from obsidian_brain.project_mapper import resolve_project
 
 def test_exact_match():
     projects = {
-        "wishket": {"aliases": ["backend"], "description": ""},
+        "project-a": {"aliases": ["backend"], "description": ""},
     }
-    assert resolve_project("wishket", projects) == "wishket"
+    assert resolve_project("project-a", projects) == "project-a"
 
 
 def test_alias_match():
     projects = {
-        "wishket": {"aliases": ["backend", "schema"], "description": ""},
+        "project-a": {"aliases": ["backend", "schema"], "description": ""},
     }
-    assert resolve_project("backend", projects) == "wishket"
-    assert resolve_project("schema", projects) == "wishket"
+    assert resolve_project("backend", projects) == "project-a"
+    assert resolve_project("schema", projects) == "project-a"
 
 
 def test_fuzzy_match():
     projects = {
-        "wishket": {"aliases": ["backend"], "description": ""},
+        "project-a": {"aliases": ["backend"], "description": ""},
     }
-    assert resolve_project("wishket-backend", projects) == "wishket"
+    assert resolve_project("project-a-backend", projects) == "project-a"
 
 
 def test_no_match_returns_none():
     projects = {
-        "wishket": {"aliases": ["backend"], "description": ""},
+        "project-a": {"aliases": ["backend"], "description": ""},
     }
     assert resolve_project("random-thing", projects) is None
 
 
 def test_case_insensitive():
     projects = {
-        "wishket": {"aliases": ["Backend"], "description": ""},
+        "project-a": {"aliases": ["Backend"], "description": ""},
     }
-    assert resolve_project("BACKEND", projects) == "wishket"
+    assert resolve_project("BACKEND", projects) == "project-a"
 
 
-def test_daeun_catches_personal_projects():
+def test_personal_catches_aliases():
     projects = {
-        "daeun": {"aliases": ["obsidian-brain", "matjip-scout", "pomodoro-todo"], "description": ""},
+        "personal": {"aliases": ["obsidian-brain", "eta-scout", "theta-todo"], "description": ""},
     }
-    assert resolve_project("obsidian-brain", projects) == "daeun"
-    assert resolve_project("matjip-scout", projects) == "daeun"
+    assert resolve_project("obsidian-brain", projects) == "personal"
+    assert resolve_project("eta-scout", projects) == "personal"
 
 
 def test_resolve_list():
     from obsidian_brain.project_mapper import resolve_projects
     projects_config = {
-        "wishket": {"aliases": ["backend"], "description": ""},
-        "daeun": {"aliases": ["obsidian-brain"], "description": ""},
+        "project-a": {"aliases": ["backend"], "description": ""},
+        "personal": {"aliases": ["obsidian-brain"], "description": ""},
     }
     result = resolve_projects(["backend", "obsidian-brain", "unknown"], projects_config)
-    assert result == ["wishket", "daeun"]
+    assert result == ["project-a", "personal"]
 
 
 def test_resolve_list_deduplicates():
     from obsidian_brain.project_mapper import resolve_projects
     projects_config = {
-        "wishket": {"aliases": ["backend", "schema"], "description": ""},
+        "project-a": {"aliases": ["backend", "schema"], "description": ""},
     }
-    result = resolve_projects(["backend", "schema", "wishket"], projects_config)
-    assert result == ["wishket"]
+    result = resolve_projects(["backend", "schema", "project-a"], projects_config)
+    assert result == ["project-a"]
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_project_mapper.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_project_mapper.py -v`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Implement project_mapper.py**
@@ -261,7 +261,7 @@ def resolve_projects(names: list[str], projects_config: dict) -> list[str]:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_project_mapper.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_project_mapper.py -v`
 Expected: ALL PASS
 
 - [ ] **Step 5: Commit**
@@ -305,7 +305,7 @@ def test_scan_experiences_empty(tmp_path):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_vault.py::test_scan_experiences tests/test_vault.py::test_scan_experiences_empty -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_vault.py::test_scan_experiences tests/test_vault.py::test_scan_experiences_empty -v`
 Expected: FAIL — `scan_experiences` not found
 
 - [ ] **Step 3: Implement scan_experiences**
@@ -323,7 +323,7 @@ def scan_experiences(vault_path: Path, folder: str = "Experiences") -> list[str]
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_vault.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_vault.py -v`
 Expected: ALL PASS
 
 - [ ] **Step 5: Commit**
@@ -382,14 +382,14 @@ def test_prompt_includes_project_descriptions():
         "date": "2026-04-09",
     }
     projects_config = {
-        "wishket": {"aliases": ["backend"], "description": "위시켓 플랫폼"},
-        "daeun": {"aliases": ["obsidian-brain"], "description": "개인 프로젝트"},
+        "project-a": {"aliases": ["backend"], "description": "example platform"},
+        "personal": {"aliases": ["obsidian-brain"], "description": "personal projects"},
     }
     prompt = build_prompt(parsed, projects_config=projects_config)
-    assert "wishket" in prompt
-    assert "위시켓 플랫폼" in prompt
+    assert "project-a" in prompt
+    assert "example platform" in prompt
     assert "backend" in prompt
-    assert "daeun" in prompt
+    assert "personal" in prompt
 
 
 def test_prompt_includes_existing_experiences():
@@ -421,7 +421,7 @@ def test_prompt_daily_entries_instructions():
         "date": "2026-04-09",
     }
     projects_config = {
-        "wishket": {"aliases": [], "description": "위시켓"},
+        "project-a": {"aliases": [], "description": "project-a"},
     }
     prompt = build_prompt(parsed, projects_config=projects_config)
     assert "daily_entries" in prompt
@@ -443,7 +443,7 @@ def test_truncate_messages_long_conversation():
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_analyzer.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_analyzer.py -v`
 Expected: FAIL — `daily_entries` not in schema, `projects_config` not accepted by `build_prompt`
 
 - [ ] **Step 3: Implement schema and prompt changes**
@@ -622,7 +622,7 @@ def analyze(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_analyzer.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_analyzer.py -v`
 Expected: ALL PASS
 
 - [ ] **Step 5: Commit**
@@ -649,8 +649,8 @@ def test_generate_daily_doc_new_file(tmp_path):
     from obsidian_brain.generator import generate_daily_doc
 
     daily_entries = [
-        {"project": "wishket", "bullets": ["Lead Scoring 리팩토링", "Celery 타임아웃 해결"]},
-        {"project": "daeun", "bullets": ["obsidian-brain 구조 전환"]},
+        {"project": "project-a", "bullets": ["feature-x refactor", "background task timeout fix"]},
+        {"project": "personal", "bullets": ["obsidian-brain 구조 전환"]},
     ]
     path = generate_daily_doc(
         vault_path=tmp_path,
@@ -664,11 +664,11 @@ def test_generate_daily_doc_new_file(tmp_path):
 
     post = frontmatter.load(path)
     assert post["date"] == "2026-04-09"
-    assert "wishket" in post["projects"]
-    assert "daeun" in post["projects"]
-    assert "## [[wishket]]" in post.content
-    assert "Lead Scoring 리팩토링" in post.content
-    assert "## [[daeun]]" in post.content
+    assert "project-a" in post["projects"]
+    assert "personal" in post["projects"]
+    assert "## [[project-a]]" in post.content
+    assert "feature-x refactor" in post.content
+    assert "## [[personal]]" in post.content
 
 
 def test_generate_daily_doc_append_existing(tmp_path):
@@ -679,7 +679,7 @@ def test_generate_daily_doc_append_existing(tmp_path):
         vault_path=tmp_path,
         daily_folder="Daily",
         date="2026-04-09",
-        daily_entries=[{"project": "wishket", "bullets": ["Lead Scoring 리팩토링"]}],
+        daily_entries=[{"project": "project-a", "bullets": ["feature-x refactor"]}],
         tags=["django"],
     )
     # Second session — same project
@@ -687,17 +687,17 @@ def test_generate_daily_doc_append_existing(tmp_path):
         vault_path=tmp_path,
         daily_folder="Daily",
         date="2026-04-09",
-        daily_entries=[{"project": "wishket", "bullets": ["Celery 타임아웃 해결"]}],
+        daily_entries=[{"project": "project-a", "bullets": ["background task timeout fix"]}],
         tags=["celery"],
     )
 
     post = frontmatter.load(path)
     assert "django" in post["tags"]
     assert "celery" in post["tags"]
-    # Both bullets under same wishket section
-    assert post.content.count("## [[wishket]]") == 1
-    assert "Lead Scoring 리팩토링" in post.content
-    assert "Celery 타임아웃 해결" in post.content
+    # Both bullets under same project-a section
+    assert post.content.count("## [[project-a]]") == 1
+    assert "feature-x refactor" in post.content
+    assert "background task timeout fix" in post.content
 
 
 def test_generate_daily_doc_append_new_project(tmp_path):
@@ -708,7 +708,7 @@ def test_generate_daily_doc_append_new_project(tmp_path):
         vault_path=tmp_path,
         daily_folder="Daily",
         date="2026-04-09",
-        daily_entries=[{"project": "wishket", "bullets": ["작업1"]}],
+        daily_entries=[{"project": "project-a", "bullets": ["작업1"]}],
         tags=[],
     )
     # Second session — different project
@@ -716,15 +716,15 @@ def test_generate_daily_doc_append_new_project(tmp_path):
         vault_path=tmp_path,
         daily_folder="Daily",
         date="2026-04-09",
-        daily_entries=[{"project": "daeun", "bullets": ["작업2"]}],
+        daily_entries=[{"project": "personal", "bullets": ["작업2"]}],
         tags=[],
     )
 
     post = frontmatter.load(path)
-    assert "wishket" in post["projects"]
-    assert "daeun" in post["projects"]
-    assert "## [[wishket]]" in post.content
-    assert "## [[daeun]]" in post.content
+    assert "project-a" in post["projects"]
+    assert "personal" in post["projects"]
+    assert "## [[project-a]]" in post.content
+    assert "## [[personal]]" in post.content
 
 
 def test_generate_daily_doc_null_project(tmp_path):
@@ -744,7 +744,7 @@ def test_generate_daily_doc_null_project(tmp_path):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_generator.py::test_generate_daily_doc_new_file tests/test_generator.py::test_generate_daily_doc_append_existing tests/test_generator.py::test_generate_daily_doc_append_new_project tests/test_generator.py::test_generate_daily_doc_null_project -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_generator.py::test_generate_daily_doc_new_file tests/test_generator.py::test_generate_daily_doc_append_existing tests/test_generator.py::test_generate_daily_doc_append_new_project tests/test_generator.py::test_generate_daily_doc_null_project -v`
 Expected: FAIL — `generate_daily_doc` not found
 
 - [ ] **Step 3: Implement generate_daily_doc**
@@ -817,7 +817,7 @@ def generate_daily_doc(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_generator.py::test_generate_daily_doc_new_file tests/test_generator.py::test_generate_daily_doc_append_existing tests/test_generator.py::test_generate_daily_doc_append_new_project tests/test_generator.py::test_generate_daily_doc_null_project -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_generator.py::test_generate_daily_doc_new_file tests/test_generator.py::test_generate_daily_doc_append_existing tests/test_generator.py::test_generate_daily_doc_append_new_project tests/test_generator.py::test_generate_daily_doc_null_project -v`
 Expected: ALL PASS
 
 - [ ] **Step 5: Commit**
@@ -844,14 +844,14 @@ def test_generate_project_doc_new_format(tmp_path):
     path = generate_project_doc(
         vault_path=tmp_path,
         projects_folder="Projects",
-        project_name="wishket",
+        project_name="project-a",
         date="2026-04-09",
-        summary="Lead Scoring 리팩토링",
+        summary="feature-x refactor",
         decisions=["가중치 균등 배분으로 변경"],
     )
     assert path.exists()
     post = frontmatter.load(path)
-    assert post["title"] == "wishket"
+    assert post["title"] == "project-a"
     assert post["status"] == "active"
     assert "## 개요" in post.content
     assert "## 핵심 결정" in post.content
@@ -863,16 +863,16 @@ def test_generate_project_doc_new_format(tmp_path):
 def test_update_project_doc_new_format(tmp_path):
     projects_dir = tmp_path / "Projects"
     projects_dir.mkdir()
-    existing = projects_dir / "wishket.md"
+    existing = projects_dir / "project-a.md"
     existing.write_text("""---
-title: wishket
+title: project-a
 status: active
 updated: '2026-04-08'
 ---
 
 ## 개요
 
-위시켓 플랫폼
+example platform
 
 ## 핵심 결정
 - 2026-04-08: UUID PK 전환
@@ -883,13 +883,13 @@ updated: '2026-04-08'
     update_project_doc(
         doc_path=existing,
         date="2026-04-09",
-        summary="Lead Scoring 리팩토링",
+        summary="feature-x refactor",
         decisions=["가중치 균등 배분"],
     )
     post = frontmatter.load(existing)
     assert post["updated"] == "2026-04-09"
     assert "[[2026-04-09]]" in post.content
-    assert "Lead Scoring 리팩토링" in post.content
+    assert "feature-x refactor" in post.content
     assert "가중치 균등 배분" in post.content
     # Old content preserved
     assert "UUID PK 전환" in post.content
@@ -897,7 +897,7 @@ updated: '2026-04-08'
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_generator.py::test_generate_project_doc_new_format tests/test_generator.py::test_update_project_doc_new_format -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_generator.py::test_generate_project_doc_new_format tests/test_generator.py::test_update_project_doc_new_format -v`
 Expected: FAIL — new format assertions fail (old format uses `## 대화 타임라인`, not `## 최근 작업`)
 
 - [ ] **Step 3: Update generate_project_doc and update_project_doc**
@@ -979,7 +979,7 @@ def update_project_doc(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_generator.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_generator.py -v`
 Expected: ALL PASS (also fix old tests that relied on old format — see step 5)
 
 Note: `test_generate_project_doc` (old test) and `test_update_project_doc` (old test) need updating to match new format. Update them:
@@ -1216,7 +1216,7 @@ def test_experience_dedup_threshold_06(tmp_path):
 
 - [ ] **Step 3: Run tests**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_filter.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_filter.py -v`
 Expected: ALL PASS
 
 - [ ] **Step 4: Commit**
@@ -1275,12 +1275,12 @@ def test_process_session_creates_daily_note(tmp_path, monkeypatch):
     (vault_path / ".obsidian-brain").mkdir()
 
     mock_analysis = {
-        "summary": "Lead Scoring 리팩토링 및 Celery 타임아웃 해결",
-        "title_slug": "lead-scoring-celery",
+        "summary": "feature-x refactor and background task timeout fix",
+        "title_slug": "feature-x-task",
         "tags": ["django", "celery"],
         "decisions": ["가중치 균등 배분"],
         "daily_entries": [
-            {"project": "wishket", "bullets": ["Lead Scoring v3 리팩토링", "Celery 타임아웃 해결"]},
+            {"project": "project-a", "bullets": ["feature-x refactor", "background task timeout fix"]},
         ],
         "experiences": [],
     }
@@ -1293,7 +1293,7 @@ def test_process_session_creates_daily_note(tmp_path, monkeypatch):
         "session_id": "test-session-123",
         "date": "2026-04-09",
         "messages": [
-            {"role": "user", "content": "Lead Scoring 점수 기준을 바꾸자"},
+            {"role": "user", "content": "let's change feature-x scoring"},
             {"role": "assistant", "content": "가중치를 균등 배분으로 변경하겠습니다"},
         ] * 3,
     })
@@ -1302,7 +1302,7 @@ def test_process_session_creates_daily_note(tmp_path, monkeypatch):
         "model": "sonnet",
         "folders": {"daily": "Daily", "experiences": "Experiences", "projects": "Projects"},
         "projects": {
-            "wishket": {"aliases": ["backend"], "description": "위시켓"},
+            "project-a": {"aliases": ["backend"], "description": "project-a"},
         },
     })
 
@@ -1349,7 +1349,7 @@ def test_process_session_maps_alias_to_project(tmp_path, monkeypatch):
         "model": "sonnet",
         "folders": {"daily": "Daily", "experiences": "Experiences", "projects": "Projects"},
         "projects": {
-            "wishket": {"aliases": ["backend"], "description": "위시켓"},
+            "project-a": {"aliases": ["backend"], "description": "project-a"},
         },
     })
 
@@ -1357,9 +1357,9 @@ def test_process_session_maps_alias_to_project(tmp_path, monkeypatch):
 
     import frontmatter
     daily = frontmatter.load(vault_path / "Daily" / "2026-04-09.md")
-    # "backend" was mapped to "wishket"
-    assert "wishket" in daily["projects"]
-    assert "## [[wishket]]" in daily.content
+    # "backend" was mapped to "project-a"
+    assert "project-a" in daily["projects"]
+    assert "## [[project-a]]" in daily.content
 
 
 def test_process_session_creates_experience_notes(tmp_path, monkeypatch):
@@ -1376,7 +1376,7 @@ def test_process_session_creates_experience_notes(tmp_path, monkeypatch):
         "title_slug": "django-queryset",
         "tags": ["django"],
         "decisions": [],
-        "daily_entries": [{"project": "wishket", "bullets": ["QuerySet 최적화"]}],
+        "daily_entries": [{"project": "project-a", "bullets": ["query optimization"]}],
         "experiences": [
             {
                 "title": "Django QuerySet 평가 시점 함정",
@@ -1401,7 +1401,7 @@ def test_process_session_creates_experience_notes(tmp_path, monkeypatch):
         "min_messages": 3,
         "model": "sonnet",
         "folders": {"daily": "Daily", "experiences": "Experiences", "projects": "Projects"},
-        "projects": {"wishket": {"aliases": [], "description": "위시켓"}},
+        "projects": {"project-a": {"aliases": [], "description": "project-a"}},
     })
 
     process_session(transcript_path=tmp_path / "t.jsonl", vault_path=vault_path)
@@ -1413,7 +1413,7 @@ def test_process_session_creates_experience_notes(tmp_path, monkeypatch):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_pipeline.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_pipeline.py -v`
 Expected: FAIL — pipeline still uses old code
 
 - [ ] **Step 3: Rewrite pipeline.py**
@@ -1553,7 +1553,7 @@ def process_session(
 
 - [ ] **Step 4: Run all tests**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/test_pipeline.py -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/test_pipeline.py -v`
 Expected: ALL PASS
 
 - [ ] **Step 5: Commit**
@@ -1572,7 +1572,7 @@ git commit -m "feat: rewrite pipeline to use daily notes, project mapping, and e
 
 - [ ] **Step 1: Run the full test suite**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/ -v --tb=short`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/ -v --tb=short`
 Expected: ALL PASS
 
 - [ ] **Step 2: Fix any remaining failures**
@@ -1584,7 +1584,7 @@ Common issues to watch for:
 
 - [ ] **Step 3: Run full suite again**
 
-Run: `cd /Users/daeun/sssunda/obsidian-brain && python -m pytest tests/ -v`
+Run: `cd /path/to/obsidian-brain && python -m pytest tests/ -v`
 Expected: ALL PASS
 
 - [ ] **Step 4: Commit any fixes**

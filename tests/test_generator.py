@@ -152,14 +152,14 @@ def test_generate_project_doc_new_format(tmp_path):
     path = generate_project_doc(
         vault_path=tmp_path,
         projects_folder="Projects",
-        project_name="wishket",
+        project_name="project-a",
         date="2026-04-09",
-        summary="Lead Scoring 리팩토링",
+        summary="feature-x refactor",
         decisions=["가중치 균등 배분으로 변경"],
     )
     assert path.exists()
     post = frontmatter.load(path)
-    assert post["title"] == "wishket"
+    assert post["title"] == "project-a"
     assert post["status"] == "active"
     assert "## 개요" in post.content
     assert "## 핵심 결정" in post.content
@@ -183,7 +183,7 @@ def test_generate_experience_doc_problem_solving(tmp_path):
     }
     conversation_slug = "2026-03-30-django-admin-logentry"
     date = "2026-03-30"
-    projects = ["wishos"]
+    projects = ["project-b"]
 
     doc_path = generate_experience_doc(
         experience=experience,
@@ -244,8 +244,8 @@ def test_generate_daily_doc_new_file(tmp_path):
     from obsidian_brain.generator import generate_daily_doc
 
     daily_entries = [
-        {"project": "wishket", "bullets": ["Lead Scoring 리팩토링", "Celery 타임아웃 해결"]},
-        {"project": "daeun", "bullets": ["obsidian-brain 구조 전환"]},
+        {"project": "project-a", "bullets": ["feature-x refactor", "background task timeout fix"]},
+        {"project": "personal", "bullets": ["obsidian-brain 구조 전환"]},
     ]
     path = generate_daily_doc(
         vault_path=tmp_path,
@@ -259,11 +259,11 @@ def test_generate_daily_doc_new_file(tmp_path):
 
     post = frontmatter.load(path)
     assert post["date"] == "2026-04-09"
-    assert "wishket" in post["projects"]
-    assert "daeun" in post["projects"]
-    assert "## [[wishket]]" in post.content
-    assert "Lead Scoring 리팩토링" in post.content
-    assert "## [[daeun]]" in post.content
+    assert "project-a" in post["projects"]
+    assert "personal" in post["projects"]
+    assert "## [[project-a]]" in post.content
+    assert "feature-x refactor" in post.content
+    assert "## [[personal]]" in post.content
 
 
 def test_generate_daily_doc_append_existing(tmp_path):
@@ -274,7 +274,7 @@ def test_generate_daily_doc_append_existing(tmp_path):
         vault_path=tmp_path,
         daily_folder="Daily",
         date="2026-04-09",
-        daily_entries=[{"project": "wishket", "bullets": ["Lead Scoring 리팩토링"]}],
+        daily_entries=[{"project": "project-a", "bullets": ["feature-x refactor"]}],
         tags=["django"],
     )
     # Second session — same project
@@ -282,16 +282,16 @@ def test_generate_daily_doc_append_existing(tmp_path):
         vault_path=tmp_path,
         daily_folder="Daily",
         date="2026-04-09",
-        daily_entries=[{"project": "wishket", "bullets": ["Celery 타임아웃 해결"]}],
+        daily_entries=[{"project": "project-a", "bullets": ["background task timeout fix"]}],
         tags=["celery"],
     )
 
     post = frontmatter.load(path)
     assert "django" in post["tags"]
     assert "celery" in post["tags"]
-    assert post.content.count("## [[wishket]]") == 1
-    assert "Lead Scoring 리팩토링" in post.content
-    assert "Celery 타임아웃 해결" in post.content
+    assert post.content.count("## [[project-a]]") == 1
+    assert "feature-x refactor" in post.content
+    assert "background task timeout fix" in post.content
 
 
 def test_generate_daily_doc_append_new_project(tmp_path):
@@ -301,22 +301,22 @@ def test_generate_daily_doc_append_new_project(tmp_path):
         vault_path=tmp_path,
         daily_folder="Daily",
         date="2026-04-09",
-        daily_entries=[{"project": "wishket", "bullets": ["작업1"]}],
+        daily_entries=[{"project": "project-a", "bullets": ["작업1"]}],
         tags=[],
     )
     path = generate_daily_doc(
         vault_path=tmp_path,
         daily_folder="Daily",
         date="2026-04-09",
-        daily_entries=[{"project": "daeun", "bullets": ["작업2"]}],
+        daily_entries=[{"project": "personal", "bullets": ["작업2"]}],
         tags=[],
     )
 
     post = frontmatter.load(path)
-    assert "wishket" in post["projects"]
-    assert "daeun" in post["projects"]
-    assert "## [[wishket]]" in post.content
-    assert "## [[daeun]]" in post.content
+    assert "project-a" in post["projects"]
+    assert "personal" in post["projects"]
+    assert "## [[project-a]]" in post.content
+    assert "## [[personal]]" in post.content
 
 
 def test_generate_daily_doc_null_project(tmp_path):

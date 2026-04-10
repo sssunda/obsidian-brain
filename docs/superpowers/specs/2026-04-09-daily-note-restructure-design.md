@@ -12,10 +12,10 @@
 
 | 프로젝트 | aliases | 설명 |
 |----------|---------|------|
-| wishket | backend, schema, yozmit, manage, script, slock, prdesign, mapletech | 위시켓 플랫폼 전체 |
-| wishos | wishos-agent | WishOS AI 에이전트 시스템 |
-| prd-manage | — | PRD 관리 도구 |
-| daeun | obsidian-brain, matjip-scout, pomodoro-todo, practice, daeunBot | 개인/사이드 프로젝트 |
+| project-a | backend, schema, delta-svc, manage, script, epsilon-svc, zeta-svc, gamma | example platform |
+| project-b | project-b-agent | agent pipeline |
+| project-c | — | spec management tool |
+| personal | obsidian-brain, eta-scout, theta-todo, practice, my-bot | personal/side projects |
 
 매칭 안 되는 세션은 프로젝트 없이 Daily에만 기록 (`## 기타`).
 
@@ -28,9 +28,9 @@
   "summary": "전체 요약 (1-3문장)",
   "daily_entries": [
     {
-      "project": "wishket",
+      "project": "project-a",
       "bullets": [
-        "Lead Scoring v3 점수 기준 리팩토링 — 기존 가중치가 deal size를 과대평가해서 균등 배분으로 변경",
+        "feature-x scoring refactor — reweight to normalize input bias",
         "Celery 태스크 타임아웃 해결 — retry 3회 후 dead letter queue로 전환"
       ]
     }
@@ -56,17 +56,17 @@
 ```markdown
 ---
 date: 2026-04-09
-projects: [wishket, daeun]
+projects: [project-a, personal]
 tags: [django, celery, dedup]
 ---
 
-## [[wishket]]
-- Lead Scoring v3 점수 기준 리팩토링
+## [[project-a]]
+- feature-x scoring refactor
   - 기존 가중치가 deal size를 과대평가 → 균등 배분으로 변경
 - Celery 태스크 타임아웃 해결
   - retry 3회 후 dead letter queue로 전환
 
-## [[daeun]]
+## [[personal]]
 - obsidian-brain: daily note 구조로 전환 설계
   - Conversations + Experiences 폴더 대체
 ```
@@ -87,13 +87,13 @@ tags: [django, celery, dedup]
 
 ```markdown
 ---
-title: wishket
+title: project-a
 status: active
 updated: 2026-04-09
 ---
 
 ## 개요
-위시켓 플랫폼 — Django 백엔드, 프론트엔드, 인프라
+example platform — backend, frontend, infra
 
 ## 아키텍처
 - Django + DRF, Celery, PostgreSQL
@@ -101,10 +101,10 @@ updated: 2026-04-09
 
 ## 핵심 결정
 - 2026-03-05: UUID PK 전환 결정 → 전체 스택 연쇄 수정 필요했음
-- 2026-04-01: Lead Scoring v3 가중치 균등 배분으로 변경
+- 2026-04-01: feature-x weighting normalized
 
 ## 최근 작업
-- [[2026-04-09]] Lead Scoring 리팩토링, Celery 타임아웃 해결
+- [[2026-04-09]] feature-x refactor, background task timeout fix
 - [[2026-04-08]] WAF 룰 업데이트
 ```
 
@@ -133,7 +133,7 @@ updated: 2026-04-09
 
 ### 코드 검증 (분석 결과 후처리)
 1. 정확히 일치 → 통과
-2. aliases에 있음 → 매핑 (예: "backend" → "wishket")
+2. aliases에 있음 → 매핑 (예: "backend" → "project-a")
 3. 둘 다 아님 → fuzzy match 시도 (difflib), 0.7 이상이면 매핑
 4. 전부 아님 → null (프로젝트 없음, `## 기타`로)
 

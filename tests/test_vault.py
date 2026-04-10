@@ -6,7 +6,7 @@ SAMPLE_VAULT = Path(__file__).parent / "fixtures" / "sample_vault"
 
 def test_scan_projects():
     projects = scan_projects(SAMPLE_VAULT, "Projects")
-    assert "pomodoro-todo" in projects
+    assert "theta-todo" in projects
 
 
 def test_load_processed_ids():

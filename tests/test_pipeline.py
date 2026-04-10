@@ -34,12 +34,12 @@ def test_process_session_creates_daily_note(tmp_path, monkeypatch):
     (vault_path / ".obsidian-brain").mkdir()
 
     mock_analysis = {
-        "summary": "Lead Scoring 리팩토링 및 Celery 타임아웃 해결",
-        "title_slug": "lead-scoring-celery",
+        "summary": "feature-x refactor and background task timeout fix",
+        "title_slug": "feature-x-task",
         "tags": ["django", "celery"],
         "decisions": ["가중치 균등 배분"],
         "daily_entries": [
-            {"project": "wishket", "bullets": ["Lead Scoring v3 리팩토링", "Celery 타임아웃 해결"]},
+            {"project": "project-a", "bullets": ["feature-x refactor", "background task timeout fix"]},
         ],
         "experiences": [],
     }
@@ -52,7 +52,7 @@ def test_process_session_creates_daily_note(tmp_path, monkeypatch):
         "session_id": "test-session-123",
         "date": "2026-04-09",
         "messages": [
-            {"role": "user", "content": "Lead Scoring 점수 기준을 바꾸자"},
+            {"role": "user", "content": "let's change feature-x scoring"},
             {"role": "assistant", "content": "가중치를 균등 배분으로 변경하겠습니다"},
         ] * 3,
     })
@@ -61,7 +61,7 @@ def test_process_session_creates_daily_note(tmp_path, monkeypatch):
         "model": "sonnet",
         "folders": {"daily": "Daily", "experiences": "Experiences", "projects": "Projects"},
         "projects": {
-            "wishket": {"aliases": ["backend"], "description": "위시켓"},
+            "project-a": {"aliases": ["backend"], "description": "project-a"},
         },
     })
 
@@ -107,7 +107,7 @@ def test_process_session_maps_alias_to_project(tmp_path, monkeypatch):
         "model": "sonnet",
         "folders": {"daily": "Daily", "experiences": "Experiences", "projects": "Projects"},
         "projects": {
-            "wishket": {"aliases": ["backend"], "description": "위시켓"},
+            "project-a": {"aliases": ["backend"], "description": "project-a"},
         },
     })
 
@@ -115,8 +115,8 @@ def test_process_session_maps_alias_to_project(tmp_path, monkeypatch):
 
     import frontmatter
     daily = frontmatter.load(vault_path / "Daily" / "2026-04-09.md")
-    assert "wishket" in daily["projects"]
-    assert "## [[wishket]]" in daily.content
+    assert "project-a" in daily["projects"]
+    assert "## [[project-a]]" in daily.content
 
 
 def test_process_session_creates_experience_notes(tmp_path, monkeypatch):
@@ -133,7 +133,7 @@ def test_process_session_creates_experience_notes(tmp_path, monkeypatch):
         "title_slug": "django-queryset",
         "tags": ["django"],
         "decisions": [],
-        "daily_entries": [{"project": "wishket", "bullets": ["QuerySet 최적화"]}],
+        "daily_entries": [{"project": "project-a", "bullets": ["query optimization"]}],
         "experiences": [
             {
                 "title": "Django QuerySet 평가 시점 함정",
@@ -158,7 +158,7 @@ def test_process_session_creates_experience_notes(tmp_path, monkeypatch):
         "min_messages": 3,
         "model": "sonnet",
         "folders": {"daily": "Daily", "experiences": "Experiences", "projects": "Projects"},
-        "projects": {"wishket": {"aliases": [], "description": "위시켓"}},
+        "projects": {"project-a": {"aliases": [], "description": "project-a"}},
     })
 
     process_session(transcript_path=tmp_path / "t.jsonl", vault_path=vault_path)
