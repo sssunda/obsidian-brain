@@ -120,6 +120,8 @@ status: active
     assert "Docker 설정 추가" in post.content
     assert "Docker Compose 사용" in post.content
     assert post["updated"] == "2026-03-25"
+    # 최근 작업 is newest-first (desc)
+    assert post.content.index("Docker 설정 추가") < post.content.index("초기 셋업")
 
 
 def test_resolve_slug_conflict(tmp_path):

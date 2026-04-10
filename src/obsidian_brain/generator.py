@@ -4,20 +4,28 @@ from pathlib import Path
 import frontmatter
 
 
-def _append_to_section(content: str, section_heading: str, new_line: str) -> str:
-    """Append a line at the end of a markdown section."""
+def _append_to_section(
+    content: str, section_heading: str, new_line: str, prepend: bool = False
+) -> str:
+    """Insert a line into a markdown section.
+
+    prepend=True inserts right after the heading (newest-first ordering).
+    """
     if section_heading not in content:
         return content
     lines = content.split("\n")
-    insert_idx = len(lines)
-    in_section = False
+    heading_idx = -1
+    section_end = len(lines)
     for i, line in enumerate(lines):
-        if line.strip() == section_heading:
-            in_section = True
+        if heading_idx == -1:
+            if line.strip() == section_heading:
+                heading_idx = i
             continue
-        if in_section and line.startswith("## "):
-            insert_idx = i
+        if line.startswith("## "):
+            section_end = i
             break
+
+    insert_idx = heading_idx + 1 if prepend else section_end
     lines.insert(insert_idx, new_line)
     return "\n".join(lines)
 
@@ -266,7 +274,9 @@ def update_project_doc(
     # Add to 최근 작업
     work_entry = f"- [[{date}]] {summary}"
     if "## 최근 작업" in post.content:
-        post.content = _append_to_section(post.content, "## 최근 작업", work_entry)
+        post.content = _append_to_section(
+            post.content, "## 최근 작업", work_entry, prepend=True
+        )
     else:
         post.content = post.content.rstrip() + f"\n\n## 최근 작업\n{work_entry}"
 
