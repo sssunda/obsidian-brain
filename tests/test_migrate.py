@@ -3,7 +3,7 @@ import frontmatter
 from obsidian_brain.migrate import (
     deduplicate_insights,
     migrate_concepts_to_experiences,
-    migrate_conversations,
+    migrate_conversations_to_daily,
     remove_empty_sections,
 )
 from obsidian_brain.similarity import is_similar
@@ -60,18 +60,84 @@ def test_remove_empty_sections_all_filled():
     assert result == content
 
 
-def test_migrate_conversations_adds_type(tmp_path):
+def test_migrate_conversations_to_daily_basic(tmp_path):
     conv_dir = tmp_path / "Conversations" / "2026-03"
     conv_dir.mkdir(parents=True)
 
-    post = frontmatter.Post(content="## 요약\n테스트", source="claude-code", date="2026-03-01")
+    post = frontmatter.Post(
+        content="## 요약\nproject-a feature-x v3 설계를 논의하고 가중치 구조를 결정했다.",
+        source="claude-code",
+        date="2026-03-01",
+        projects=["backend"],
+        tags=["project-a", "feature-x"],
+    )
+    (conv_dir / "2026-03-01-project-a-feature-x.md").write_text(frontmatter.dumps(post))
+
+    config = {
+        "folders": {"daily": "Daily"},
+        "projects": {
+            "project-a": {"description": "", "aliases": ["backend"]},
+        },
+    }
+    result = migrate_conversations_to_daily(tmp_path, config)
+
+    assert result["converted"] == 1
+    assert result["days"] == 1
+
+    daily_file = tmp_path / "Daily" / "2026-03-01.md"
+    assert daily_file.exists()
+    daily = frontmatter.load(daily_file)
+    assert "## [[project-a]]" in daily.content
+    assert "feature-x" in daily.content
+    assert "project-a" in daily["projects"]
+    assert "feature-x" in daily["tags"]
+
+    # Original archived
+    assert not (tmp_path / "Conversations").exists()
+    assert (tmp_path / "레거시" / "Conversations" / "2026-03" / "2026-03-01-project-a-feature-x.md").exists()
+
+
+def test_migrate_conversations_to_daily_unmapped_goes_to_기타(tmp_path):
+    conv_dir = tmp_path / "Conversations" / "2026-03"
+    conv_dir.mkdir(parents=True)
+
+    post = frontmatter.Post(
+        content="## 요약\n미분류 실험 세션.",
+        date="2026-03-02",
+        projects=["random-thing"],
+    )
     (conv_dir / "test.md").write_text(frontmatter.dumps(post))
 
-    count = migrate_conversations(tmp_path)
-    assert count == 1
+    result = migrate_conversations_to_daily(tmp_path, {"folders": {"daily": "Daily"}, "projects": {}})
+    assert result["converted"] == 1
 
-    migrated = frontmatter.load(conv_dir / "test.md")
-    assert migrated["type"] == "conversation"
+    daily = frontmatter.load(tmp_path / "Daily" / "2026-03-02.md")
+    assert "## 기타" in daily.content
+    assert "미분류" in daily.content
+
+
+def test_migrate_conversations_to_daily_groups_same_day(tmp_path):
+    conv_dir = tmp_path / "Conversations" / "2026-03"
+    conv_dir.mkdir(parents=True)
+
+    for i, title in enumerate(["first session", "second session"]):
+        post = frontmatter.Post(
+            content=f"## 요약\n{title} 작업.",
+            date="2026-03-03",
+            projects=["project-a"],
+        )
+        (conv_dir / f"conv-{i}.md").write_text(frontmatter.dumps(post))
+
+    config = {
+        "folders": {"daily": "Daily"},
+        "projects": {"project-a": {"description": "", "aliases": []}},
+    }
+    result = migrate_conversations_to_daily(tmp_path, config)
+    assert result["converted"] == 2
+    assert result["days"] == 1
+
+    daily = frontmatter.load(tmp_path / "Daily" / "2026-03-03.md")
+    assert daily.content.count("- ") >= 2
 
 
 def test_migrate_concepts_to_experiences(tmp_path):
